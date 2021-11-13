@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/fire717/Fire/blob/main/LICENSE)
 
 ## Intro
-![start](./data/imgs/three_pane_aligned.gif)
+![start](/data/imgs/three_pane_aligned.gif)
 
 MoveNet is an ultra fast and accurate model that detects 17 keypoints of a body.
 This is A Pytorch implementation of MoveNet from Google. Include training code and pre-train model.
@@ -73,10 +73,10 @@ python pth2onnx.py
 ## Training Results
 
 #### Some good samples
-![good](./data/imgs/good.png)
+![good](/data/imgs/good.png)
 
 #### Some bad cases
-![bad](./data/imgs/bad.png)
+![bad](/data/imgs/bad.png)
 
 
 ## Tips to improve
