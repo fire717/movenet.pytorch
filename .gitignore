@@ -10,5 +10,6 @@ __pycache__
 
 /lib/__pycache__
 /data
-/output
+/output/show_imgs
+/output/detect
 
