@@ -1,0 +1,14 @@
+__pycache__
+*.jpg
+*.png
+*.zip
+*.rar
+*.log
+*.onnx
+*.bak
+*.pth
+
+/lib/__pycache__
+/data
+/output
+
