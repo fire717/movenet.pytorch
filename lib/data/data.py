@@ -84,7 +84,7 @@ class Data():
 
         print(count1, count2, count3, count4)
 
-        b
+
         random.shuffle(new_data_list)
         return new_data_list
 

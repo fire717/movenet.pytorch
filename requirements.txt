@@ -1,7 +1,6 @@
-json
 numpy
 pandas
 opencv-python
 torch==1.7.0
-torchvisson==0.8.1
+torchvision==0.8.1
 albumentations

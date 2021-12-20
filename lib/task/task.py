@@ -27,11 +27,11 @@ class Task():
 
         self.cfg = cfg
 
-        if self.cfg['GPU_ID'] != '' :
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
-
+        # if self.cfg['GPU_ID'] != '' :
+        #     self.device = torch.device("cuda")
+        # else:
+        #     self.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
 
         ############################################################

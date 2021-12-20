@@ -2,28 +2,28 @@
 @Fire
 https://github.com/fire717
 """
+home = "/media/ggoyal/Data/data/coco/"
 
 cfg = {
     ##### Global Setting
     'GPU_ID': '0',
-    "num_workers":4,
-    "random_seed":42,
-    "cfg_verbose":True,
+    "num_workers": 4,
+    "random_seed": 42,
+    "cfg_verbose": True,
 
-    "save_dir": "output/",
-
+    "save_dir": home+"output/",
     "num_classes": 17,
-    "width_mult":1.0,
+    "width_mult": 1.0,
     "img_size": 192, 
     
 
     ##### Train Setting
-    'img_path':"./data/croped/imgs",
-    'train_label_path':'./data/croped/train2017.json',
-    'val_label_path':'./data/croped/val2017.json',
-    'balance_data':False,
+    'img_path': home+"cropped/imgs",
+    'train_label_path': home+'cropped/train2017.json',
+    'val_label_path': home+'/cropped/val2017.json',
+    'balance_data': False,
 
-    'log_interval':10,  
+    'log_interval': 10,
     'save_best_only': True,
     
     'pin_memory': True,
@@ -44,7 +44,7 @@ cfg = {
 
 
     ##### Test
-    'test_img_path':"./data/croped/imgs",
+    'test_img_path':home+"/cropped/imgs",
 
     #"../data/eval/imgs",
     #"../data/eval/imgs",
@@ -52,8 +52,8 @@ cfg = {
     #"../data/true/mypc/crop_upper1"
     #../data/coco/small_dataset/imgs
     #"../data/testimg"
-    'exam_label_path':'../data/all/data_all_new.json',
+    'exam_label_path': home+'/all/data_all_new.json',
 
-    'eval_img_path':'../data/eval/imgs',
-    'eval_label_path':'../data/eval/mypc.json',
+    'eval_img_path': home+'/eval/imgs',
+    'eval_label_path': home+'/eval/mypc.json',
     }

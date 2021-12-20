@@ -7,6 +7,7 @@ import json
 import pickle
 import cv2
 import numpy as np
+from os.path import join
 
 
 
@@ -218,7 +219,7 @@ def main(img_dir, labels_path, output_name, output_img_dir):
 
 
 
-            ###visul for exam, comment when use
+            ###visual for exam, comment when use
             if SHOW_POINTS_ON_IMG:
                 cv2.circle(save_img, (int(save_center[0]*new_w), int(save_center[1]*new_h)), 4, (0,255,0), 3)
                 for show_kid in range(len(save_keypoints)//3):
@@ -260,20 +261,20 @@ if __name__ == '__main__':
 
     EXPAND_RATIO = 1. 
     #person body bbox expand range to image edge
+    home = '/media/ggoyal/Data/data/coco'
+    output_img_dir = join(home,"cropped/imgs")
 
-    output_img_dir = "./data/croped/imgs"
 
-
-    img_dir = "./data/val2017"
-    labels_path = "./data/annotations/person_keypoints_val2017.json"
-    output_name = './data/croped/val2017.json'
+    img_dir = join(home,"val2017")
+    labels_path = join(home,"annotations/person_keypoints_val2017.json")
+    output_name = join(home,"cropped/val2017.json")
     main(img_dir, labels_path, output_name, output_img_dir)
 
     
 
-    img_dir = "./data/train2017"
-    labels_path = "./data/annotations/person_keypoints_train2017.json"
-    output_name = './data/croped/train2017.json'
+    img_dir = join(home,"train2017")
+    labels_path = join(home,"annotations/person_keypoints_train2017.json")
+    output_name = join(home,"cropped/train2017.json")
     main(img_dir, labels_path, output_name, output_img_dir)
 
 
