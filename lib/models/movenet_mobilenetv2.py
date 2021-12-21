@@ -366,7 +366,6 @@ if __name__ == "__main__":
     model = MoveNet().cuda()
     print(summary(model, (3, 192, 192)))
 
-
     dummy_input1 = torch.randn(1, 3, 192, 192).cuda()
     input_names = [ "input1"] #自己命名
     output_names = [ "output1" ]

@@ -198,10 +198,10 @@ def movenetDecode(data, kps_mask=None,mode='output', num_joints = 17,
         # print(data.shape)
         batch_size = data.shape[0]
         
-        heatmaps = data[:,:17,:,:]
-        centers = data[:,17:18,:,:]
-        regs = data[:,18:52,:,:]
-        offsets = data[:,52:,:,:]
+        heatmaps = data[:,:num_joints,:,:]
+        centers = data[:,num_joints,:,:]
+        regs = data[:,num_joints+1:(num_joints*3)+1,:,:]
+        offsets = data[:,(num_joints*3)+1:,:,:]
 
         # cv2.imwrite(os.path.join("_centers.jpg"), centers[0][0]*255)
         # cv2.imwrite(os.path.join("_heatmaps0.jpg"), heatmaps[0][0]*255)
