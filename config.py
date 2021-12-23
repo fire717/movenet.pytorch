@@ -33,6 +33,7 @@ cfg = {
     'epochs': 110,
     'optimizer': 'Adam',  # Adam  SGD
     'scheduler': 'MultiStepLR-70,100-0.1',  # default  SGDR-5-2  CVPR   step-4-0.8 MultiStepLR
+    # multistepLR-<<>milestones>-<<decay multiplier>>
     'weight_decay': 5.e-4,  # 0.0001,
 
     'class_weight': None,  # [1., 1., 1., 1., 1., 1., 1., ]

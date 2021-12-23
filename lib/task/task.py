@@ -402,7 +402,8 @@ class Task():
 
                 output = self.model(imgs)
 
-                heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss = self.loss_func(output, labels, kps_mask)
+                heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss = self.loss_func(output, labels, kps_mask,
+                                                                                              self.cfg['num_classes'])
                 total_loss = heatmap_loss + center_loss + regs_loss + offset_loss + bone_loss
 
 
@@ -415,8 +416,10 @@ class Task():
                 ### evaluate
                 # acc1 = myAcc(heatmap2locate(output[0].detach().cpu().numpy()), 
                 #                 heatmap2locate(labels[:,:7,:,:].detach().cpu().numpy()))
-                pre = movenetDecode(output, kps_mask, mode='output')
-                gt = movenetDecode(labels, kps_mask, mode='label')
+                pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
+
+                gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
+
                 acc = myAcc(pre, gt)
 
                 # right_count1 += acc1
@@ -446,7 +449,7 @@ class Task():
 
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
-        self.add_to_tb(self, heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
+        self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
                        total_loss_sum, np.mean(right_count / total_count), epoch, label="Val")
 
         if 'default' in self.cfg['scheduler']:
@@ -494,11 +497,10 @@ class Task():
         if label is not None and label[-1] != " ":
             label = label + " "
 
-
-        self.tb.add_scalar(label+"Total Loss", total_loss.item(), epoch)
-        self.tb.add_scalar(label+"Heatmap Loss", heatmap_loss.item(), epoch)
-        self.tb.add_scalar(label+"Bone Loss", bone_loss.item(), epoch)
-        self.tb.add_scalar(label+"Center Loss", center_loss.item(), epoch)
-        self.tb.add_scalar(label+"Regression Loss", regs_loss.item(), epoch)
-        self.tb.add_scalar(label+"Offset Loss", offset_loss.item(), epoch)
+        self.tb.add_scalar(label+"Total Loss", total_loss, epoch)
+        self.tb.add_scalar(label+"Heatmap Loss", heatmap_loss, epoch)
+        self.tb.add_scalar(label+"Bone Loss", bone_loss, epoch)
+        self.tb.add_scalar(label+"Center Loss", center_loss, epoch)
+        self.tb.add_scalar(label+"Regression Loss", regs_loss, epoch)
+        self.tb.add_scalar(label+"Offset Loss", offset_loss, epoch)
         self.tb.add_scalar(label+"Accuracy", acc, epoch)
