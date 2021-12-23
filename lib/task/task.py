@@ -2,16 +2,14 @@
 @Fire
 https://github.com/fire717
 """
-import time
 import gc
 import os
-import datetime
 import torch
-import torch.nn as nn
 import numpy as np
 import cv2
 
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
 from lib.loss.movenet_loss import MovenetLoss
@@ -45,7 +43,11 @@ class Task():
         # scheduler
         self.scheduler = getSchedu(self.cfg['scheduler'], self.optimizer)
 
+        # tensorboard
+        self.tb = SummaryWriter()
+
     def train(self, train_loader, val_loader):
+
 
         for epoch in range(self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
@@ -289,6 +291,8 @@ class Task():
         correct = 0
         count = 0
 
+        heatmap_loss_sum = bone_loss_sum = center_loss_sum = regs_loss_sum = offset_loss_sum = 0
+
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
 
@@ -309,6 +313,13 @@ class Task():
 
             total_loss = heatmap_loss + center_loss + regs_loss + offset_loss + bone_loss
 
+            heatmap_loss_sum += heatmap_loss
+            bone_loss_sum += bone_loss
+            center_loss_sum += center_loss
+            regs_loss_sum += regs_loss
+            offset_loss_sum += offset_loss
+
+
             if self.cfg['clip_gradient']:
                 clipGradient(self.optimizer, self.cfg['clip_gradient'])
 
@@ -328,7 +339,6 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             acc = myAcc(pre, gt)
-
             right_count += acc
             total_count += labels.shape[0]
 
@@ -353,12 +363,22 @@ class Task():
                                               np.mean(right_count / total_count)),
                       end='', flush=True)
             # break
+        total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
+
+        # Tensorboard additions
+        self.add_to_tb(self, heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
+                       total_loss_sum, np.mean(right_count / total_count), epoch, label="Train")
+        # TODO
+        # if epoch == 0:
+        #     self.tb.add_graph(self.model, imgs[:, :, :, 0])
         print()
 
     def onTrainEnd(self):
         del self.model
         gc.collect()
         torch.cuda.empty_cache()
+        self.tb.flush()
+        self.tb.close()
 
         if self.cfg["cfg_verbose"]:
             printDash()
@@ -369,6 +389,8 @@ class Task():
 
         num_test_batches = 0.0
         self.model.eval()
+
+        heatmap_loss_sum = bone_loss_sum = center_loss_sum = regs_loss_sum = offset_loss_sum = 0
 
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
@@ -382,6 +404,13 @@ class Task():
 
                 heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss = self.loss_func(output, labels, kps_mask)
                 total_loss = heatmap_loss + center_loss + regs_loss + offset_loss + bone_loss
+
+
+                heatmap_loss_sum += heatmap_loss
+                bone_loss_sum += bone_loss
+                center_loss_sum += center_loss
+                regs_loss_sum += regs_loss
+                offset_loss_sum += offset_loss
 
                 ### evaluate
                 # acc1 = myAcc(heatmap2locate(output[0].detach().cpu().numpy()), 
@@ -414,6 +443,11 @@ class Task():
                       np.mean(right_count / total_count)),
                   )
             print()
+
+        total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
+
+        self.add_to_tb(self, heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
+                       total_loss_sum, np.mean(right_count / total_count), epoch, label="Val")
 
         if 'default' in self.cfg['scheduler']:
             self.scheduler.step(np.mean(right_count / total_count))
@@ -454,3 +488,17 @@ class Task():
     def modelSave(self, save_name):
         torch.save(self.model.state_dict(), os.path.join(self.cfg['save_dir'], save_name))
         # print("Save model to: ",save_name)
+
+    def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch, label = "" ):
+
+        if label != "" and label[-1] != " ":
+            label = label + " "
+
+
+        self.tb.add_scalar(label+"Total Loss", total_loss.item(), epoch)
+        self.tb.add_scalar(label+"Heatmap Loss", heatmap_loss.item(), epoch)
+        self.tb.add_scalar(label+"Bone Loss", bone_loss.item(), epoch)
+        self.tb.add_scalar(label+"Center Loss", center_loss.item(), epoch)
+        self.tb.add_scalar(label+"Regression Loss", regs_loss.item(), epoch)
+        self.tb.add_scalar(label+"Offset Loss", offset_loss.item(), epoch)
+        self.tb.add_scalar(label+"Accuracy", acc, epoch)
