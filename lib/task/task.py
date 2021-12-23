@@ -366,7 +366,7 @@ class Task():
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
         # Tensorboard additions
-        self.add_to_tb(self, heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
+        self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
                        total_loss_sum, np.mean(right_count / total_count), epoch, label="Train")
         # TODO
         # if epoch == 0:
@@ -489,9 +489,9 @@ class Task():
         torch.save(self.model.state_dict(), os.path.join(self.cfg['save_dir'], save_name))
         # print("Save model to: ",save_name)
 
-    def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch, label = "" ):
+    def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch, label=None):
 
-        if label != "" and label[-1] != " ":
+        if label is not None and label[-1] != " ":
             label = label + " "
 
 
