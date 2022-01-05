@@ -17,9 +17,12 @@ cfg = {
     "img_size": 192,
 
     ##### Train Setting
+    'pre-separated_data': True,
+    'training_data_split': 80,
     'img_path': home + "cropped/imgs",
-    'train_label_path': home + 'cropped/train2017.json',
+    'train_label_path': home + 'cropped/train2017.json', #add the singular json file here.
     'val_label_path': home + '/cropped/val2017.json',
+
     'balance_data': False,
 
     'log_interval': 10,

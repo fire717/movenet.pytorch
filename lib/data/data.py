@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 import json
 import copy
+from torch.utils import data
 from torchvision import transforms
 
 from lib.data.data_tools import getDataLoader,getFileNames
@@ -92,16 +93,22 @@ class Data():
 
 
     def getTrainValDataloader(self):
+        if self.cfg['pre-separated_data']:
 
-        with open(self.cfg['train_label_path'],'r') as f:
-            train_label_list = json.loads(f.readlines()[0])  
-            random.shuffle(train_label_list)
+            with open(self.cfg['train_label_path'],'r') as f:
+                train_label_list = json.loads(f.readlines()[0])
 
-        with open(self.cfg['val_label_path'], 'r') as f:
-            val_label_list = json.loads(f.readlines()[0])
-            random.shuffle(val_label_list)
+            with open(self.cfg['val_label_path'], 'r') as f:
+                val_label_list = json.loads(f.readlines()[0])
+        else:
+            with open(self.cfg['train_label_path'],'r') as f:
+                complete_label_list = json.loads(f.readlines()[0])
+                train_size = int(self.cfg['training_data_split']/100 * len(complete_label_list))
+                test_size = len(complete_label_list) - train_size
+                train_label_list, val_label_list = data.random_split(complete_label_list, [train_size, test_size])
 
-
+        # random.shuffle(train_label_list)
+        # random.shuffle(val_label_list)
 
         print("[INFO] Total train images: %d, val images: %d" % 
                 (len(train_label_list), len(val_label_list)))

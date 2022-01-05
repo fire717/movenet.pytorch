@@ -44,10 +44,9 @@ class Task():
         self.scheduler = getSchedu(self.cfg['scheduler'], self.optimizer)
 
         # tensorboard
-        self.tb = SummaryWriter()
+        self.tb = SummaryWriter(comment="LR="+str(self.cfg['learning_rate'])+"_optimizer="+str(self.cfg['optimizer']))
 
     def train(self, train_loader, val_loader):
-
 
         for epoch in range(self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
@@ -307,7 +306,6 @@ class Task():
 
             output = self.model(imgs)
 
-
             heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss = self.loss_func(output, labels, kps_mask,
                                                                                           self.cfg['num_classes'])
 
@@ -318,7 +316,6 @@ class Task():
             center_loss_sum += center_loss
             regs_loss_sum += regs_loss
             offset_loss_sum += offset_loss
-
 
             if self.cfg['clip_gradient']:
                 clipGradient(self.optimizer, self.cfg['clip_gradient'])
@@ -368,9 +365,10 @@ class Task():
         # Tensorboard additions
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
                        total_loss_sum, np.mean(right_count / total_count), epoch, label="Train")
-        # TODO
-        # if epoch == 0:
-        #     self.tb.add_graph(self.model, imgs[:, :, :, 0])
+
+        if epoch == 0:
+            dummy_input1 = torch.randn(1, 3, 192, 192).cuda()
+            self.tb.add_graph(self.model, dummy_input1)
         print()
 
     def onTrainEnd(self):
@@ -405,7 +403,6 @@ class Task():
                 heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss = self.loss_func(output, labels, kps_mask,
                                                                                               self.cfg['num_classes'])
                 total_loss = heatmap_loss + center_loss + regs_loss + offset_loss + bone_loss
-
 
                 heatmap_loss_sum += heatmap_loss
                 bone_loss_sum += bone_loss
@@ -492,15 +489,16 @@ class Task():
         torch.save(self.model.state_dict(), os.path.join(self.cfg['save_dir'], save_name))
         # print("Save model to: ",save_name)
 
-    def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch, label=None):
+    def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch,
+                  label=None):
 
         if label is not None and label[-1] != " ":
             label = label + " "
 
-        self.tb.add_scalar(label+"Total Loss", total_loss, epoch)
-        self.tb.add_scalar(label+"Heatmap Loss", heatmap_loss, epoch)
-        self.tb.add_scalar(label+"Bone Loss", bone_loss, epoch)
-        self.tb.add_scalar(label+"Center Loss", center_loss, epoch)
-        self.tb.add_scalar(label+"Regression Loss", regs_loss, epoch)
-        self.tb.add_scalar(label+"Offset Loss", offset_loss, epoch)
-        self.tb.add_scalar(label+"Accuracy", acc, epoch)
+        self.tb.add_scalar(label + "Total Loss", total_loss, epoch)
+        self.tb.add_scalar(label + "Heatmap Loss", heatmap_loss, epoch)
+        self.tb.add_scalar(label + "Bone Loss", bone_loss, epoch)
+        self.tb.add_scalar(label + "Center Loss", center_loss, epoch)
+        self.tb.add_scalar(label + "Regression Loss", regs_loss, epoch)
+        self.tb.add_scalar(label + "Offset Loss", offset_loss, epoch)
+        self.tb.add_scalar(label + "Accuracy", acc, epoch)
