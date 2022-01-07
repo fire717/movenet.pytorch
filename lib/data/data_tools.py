@@ -33,11 +33,12 @@ def label2heatmap(keypoints, other_keypoints, img_size):
     # keypoints: target person
     # other_keypoints: other people's keypoints need to be add to the heatmap
     heatmaps = []
-    # print(keypoints)
+    # print(len(keypoints))
 
     keypoints_range = np.reshape(keypoints, (-1, 3))
     keypoints_range = keypoints_range[keypoints_range[:, 2] > 0]
     # print(keypoints_range)
+
     min_x = np.min(keypoints_range[:, 0])
     min_y = np.min(keypoints_range[:, 1])
     max_x = np.max(keypoints_range[:, 0])
@@ -348,7 +349,6 @@ class TensorDataset(Dataset):
         if self.data_aug is not None:
             img, item = self.data_aug(img, item)
         # print(item)
-        # print()
 
         # cv2.imwrite(os.path.join("img.jpg"), img)
 

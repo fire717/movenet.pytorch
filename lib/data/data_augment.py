@@ -42,7 +42,8 @@ def Mirror(src,label=None):
     for i in range(len(keypoints)):
         if i%3==0:
             keypoints[i] = 1-keypoints[i]
-    keypoints = [
+    try:
+        keypoints = [ #17 keypoint skeleton mirror
                 keypoints[0],keypoints[1],keypoints[2],
                 keypoints[6],keypoints[7],keypoints[8],
                 keypoints[3],keypoints[4],keypoints[5],
@@ -60,6 +61,21 @@ def Mirror(src,label=None):
                 keypoints[39],keypoints[40],keypoints[41],
                 keypoints[48],keypoints[49],keypoints[50],
                 keypoints[45],keypoints[46],keypoints[47]]
+    except IndexError:
+        keypoints = [ #13 keypoint skeleton mirror
+            keypoints[0], keypoints[1], keypoints[2],
+            keypoints[6], keypoints[7], keypoints[8],
+            keypoints[3], keypoints[4], keypoints[5],
+            keypoints[12], keypoints[13], keypoints[14],
+            keypoints[9], keypoints[10], keypoints[11],
+            keypoints[18], keypoints[19], keypoints[20],
+            keypoints[15], keypoints[16], keypoints[17],
+            keypoints[24], keypoints[25], keypoints[26],
+            keypoints[21], keypoints[22], keypoints[23],
+            keypoints[30], keypoints[31], keypoints[32],
+            keypoints[27], keypoints[28], keypoints[29],
+            keypoints[36], keypoints[37], keypoints[38],
+            keypoints[33], keypoints[34], keypoints[35]]
     #print(center, other_centers, other_keypoints)
     center[0] = 1-center[0]
 
