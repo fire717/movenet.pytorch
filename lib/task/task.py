@@ -486,7 +486,9 @@ class Task():
         if os.path.splitext(model_path)[-1] == '.json':
             with open(model_path, 'r') as f:
                 model_path = json.loads(f.readlines()[0])
-            self.init_epoch = int(os.path.basename(model_path).split('_')[1:])
+                str1 = ''
+            init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
+            self.init_epoch = init_epoch
         self.model.load_state_dict(torch.load(model_path))
 
         if data_parallel:
