@@ -7,6 +7,8 @@ import os
 import torch
 import numpy as np
 import cv2
+from pathlib import Path
+import json
 
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
@@ -480,13 +482,20 @@ class Task():
         return res_list
 
     def modelLoad(self, model_path, data_parallel=False):
-        self.model.load_state_dict(torch.load(model_path), strict=True)
+
+        if os.path.splitext(model_path)[-1] == '.json':
+            with open(model_path, 'r') as f:
+                model_path = json.loads(f.readlines()[0])
+        self.model.load_state_dict(torch.load(model_path))
 
         if data_parallel:
             self.model = torch.nn.DataParallel(self.model)
 
     def modelSave(self, save_name):
-        torch.save(self.model.state_dict(), os.path.join(self.cfg['save_dir'], save_name))
+        fullname = os.path.join(self.cfg['save_dir'], save_name)
+        torch.save(self.model.state_dict(), fullname)
+        with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
+            json.dump(fullname, f, ensure_ascii=False)
         # print("Save model to: ",save_name)
 
     def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch,
