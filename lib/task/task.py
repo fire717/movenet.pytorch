@@ -23,7 +23,7 @@ class Task():
     def __init__(self, cfg, model):
 
         self.cfg = cfg
-
+        self.init_epoch = 0
         # if self.cfg['GPU_ID'] != '' :
         #     self.device = torch.device("cuda")
         # else:
@@ -50,7 +50,7 @@ class Task():
 
     def train(self, train_loader, val_loader):
 
-        for epoch in range(self.cfg['epochs']):
+        for epoch in range(self.init_epoch,self.init_epoch+self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
             self.onValidation(val_loader, epoch)
 
@@ -486,6 +486,7 @@ class Task():
         if os.path.splitext(model_path)[-1] == '.json':
             with open(model_path, 'r') as f:
                 model_path = json.loads(f.readlines()[0])
+            self.init_epoch = int(os.path.basename(model_path).split('_')[1:])
         self.model.load_state_dict(torch.load(model_path))
 
         if data_parallel:
