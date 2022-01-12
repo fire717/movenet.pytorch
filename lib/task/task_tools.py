@@ -41,7 +41,7 @@ def getSchedu(schedu, optimizer):
                                                    gamma=gamma)
 
     else:
-        raise Exception("Unknow schedu.")
+        raise Exception("Unknown schedular.")
 
     return scheduler
 
@@ -52,7 +52,7 @@ def getOptimizer(optims, model, learning_rate, weight_decay):
     elif optims == 'SGD':
         optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
     else:
-        raise Exception("Unknow optims.")
+        raise Exception("Unknown optimizer.")
     return optimizer
 
 

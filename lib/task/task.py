@@ -46,9 +46,14 @@ class Task():
         self.scheduler = getSchedu(self.cfg['scheduler'], self.optimizer)
 
         # tensorboard
-        self.tb = SummaryWriter(comment="LR="+str(self.cfg['learning_rate'])+"_optimizer="+str(self.cfg['optimizer']))
+        self.tb = SummaryWriter(comment="__Dataset="+self.cfg['optimizer']+"_LR="+str(self.cfg['learning_rate'])+"_optimizer="+self.cfg['optimizer'])
 
     def train(self, train_loader, val_loader):
+
+        if self.init_epoch == 0:
+            dummy_input1 = torch.randn(1, 3, 192, 192).cuda()
+            self.tb.add_graph(self.model, dummy_input1)
+        print()
 
         for epoch in range(self.init_epoch,self.init_epoch+self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
@@ -366,12 +371,7 @@ class Task():
 
         # Tensorboard additions
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
-                       total_loss_sum, np.mean(right_count / total_count), epoch, label="Train")
-
-        if epoch == 0:
-            dummy_input1 = torch.randn(1, 3, 192, 192).cuda()
-            self.tb.add_graph(self.model, dummy_input1)
-        print()
+                       total_loss_sum, np.mean(right_count / total_count), epoch + 1, label="Train")
 
     def onTrainEnd(self):
         del self.model
@@ -449,7 +449,7 @@ class Task():
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
-                       total_loss_sum, np.mean(right_count / total_count), epoch, label="Val")
+                       total_loss_sum, np.mean(right_count / total_count), epoch + 1, label="Val")
 
         if 'default' in self.cfg['scheduler']:
             self.scheduler.step(np.mean(right_count / total_count))
@@ -488,7 +488,8 @@ class Task():
                 model_path = json.loads(f.readlines()[0])
                 str1 = ''
             init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
-            self.init_epoch = init_epoch
+            self.init_epoch = init_epoch + 1
+            print(model_path)
         self.model.load_state_dict(torch.load(model_path))
 
         if data_parallel:

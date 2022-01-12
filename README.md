@@ -50,22 +50,26 @@ One item:
 
 3.You can add your own data to the same format.
 
-4.After putting data at right place, you can start training
+4.Setup an initial point for the trainings
+```
+python initialize.py
+```
+5.After putting data at right place, you can start training
 ```
 python train.py
 ```
 
-5.After training finished, you need to change the test model path to test. Such as this in predict.py
+6.After training finished, you need to change the test model path to test. Such as this in predict.py
 ```
 run_task.modelLoad("output/xxx.pth")
 ```
 
 
-6.run predict to show predict result, or run evaluate.py to compute my acc on test dataset.
+7.run predict to show predict result, or run evaluate.py to compute my acc on test dataset.
 ```
 python predict.py
 ```
-7.Convert to onnx.
+8.Convert to onnx.
 ```
 python pth2onnx.py
 ```
