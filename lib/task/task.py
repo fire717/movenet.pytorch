@@ -17,6 +17,7 @@ from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGrad
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash
 from lib.utils.metrics import myAcc
+from lib.visualization.visualization import superimpose_pose
 
 
 class Task():
@@ -81,8 +82,9 @@ class Task():
                 output = self.model(img)
                 # print(len(output))
 
-                pre = movenetDecode(output, None, mode='output')
-                print(pre)
+                pre = movenetDecode(output, None, mode='output',num_joints=self.cfg["num_classes"])
+                # print(pre)
+                # print(pre.shape)
 
                 basename = os.path.basename(img_name[0])
                 img = np.transpose(img[0].cpu().numpy(), axes=[1, 2, 0])
@@ -102,10 +104,11 @@ class Task():
                 regs = output[2].cpu().numpy()[0]
                 offsets = output[3].cpu().numpy()[0]
 
-                # print(heatmaps.shape)
+                # print(centers.shape)
+
                 hm = cv2.resize(np.sum(heatmaps, axis=0), (192, 192)) * 255
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_heatmaps.jpg"), hm)
-                img[:, :, 0] += hm
+                # img[:, :, 0] += hm
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_img.jpg"), img)
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_center.jpg"),
                             cv2.resize(centers[0] * 255, (192, 192)))
@@ -172,8 +175,8 @@ class Task():
 
                 output = self.model(imgs)
 
-                pre = movenetDecode(output, kps_mask, mode='output')
-                gt = movenetDecode(labels, kps_mask, mode='label')
+                pre = movenetDecode(output, kps_mask, mode='output',num_joints=self.cfg["num_classes"])
+                gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
                 # n
                 acc = myAcc(pre, gt)
@@ -190,8 +193,11 @@ class Task():
                     basename = os.path.basename(img_name)
                     save_name = os.path.join(save_dir, basename)
 
+                    # print(os.path.join(save_dir, basename[:-4] + "_hm_pre.jpg"))
                     hm = cv2.resize(np.sum(output[0][0].cpu().numpy(), axis=0), (192, 192)) * 255
                     cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_pre.jpg"), hm)
+                    # cv2.imshow("prediction",hm)
+                    # cv2.waitKey()
 
                     hm = cv2.resize(np.sum(labels[0, :7, :, :].cpu().numpy(), axis=0), (192, 192)) * 255
                     cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_gt.jpg"), hm)
@@ -234,8 +240,8 @@ class Task():
 
                 output = self.model(imgs)
 
-                pre = movenetDecode(output, kps_mask, mode='output')
-                gt = movenetDecode(labels, kps_mask, mode='label')
+                pre = movenetDecode(output, kps_mask, mode='output',num_joints=self.cfg["num_classes"])
+                gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
                 # n
                 acc = myAcc(pre, gt)
@@ -277,8 +283,8 @@ class Task():
                         pre.extend([-1, -1])
                 pre = np.array([pre])
 
-                # pre = movenetDecode(output, kps_mask,mode='output')
-                gt = movenetDecode(labels, kps_mask, mode='label')
+                # pre = movenetDecode(output, kps_mask,mode='output',num_joints=self.cfg["num_classes"])
+                gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
                 # print(pre, gt)
                 # b
                 # n
@@ -490,7 +496,7 @@ class Task():
             init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
             self.init_epoch = init_epoch + 1
             print(model_path)
-        self.model.load_state_dict(torch.load(model_path))
+        self.model.load_state_dict(torch.load(model_path,map_location=self.device))
 
         if data_parallel:
             self.model = torch.nn.DataParallel(self.model)
