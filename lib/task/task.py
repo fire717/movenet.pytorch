@@ -91,6 +91,8 @@ class Task():
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                 h, w = img.shape[:2]
 
+                cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_img.jpg"), img)
+
                 for i in range(len(pre[0]) // 2):
                     x = int(pre[0][i * 2] * w)
                     y = int(pre[0][i * 2 + 1] * h)
@@ -109,7 +111,6 @@ class Task():
                 hm = cv2.resize(np.sum(heatmaps, axis=0), (192, 192)) * 255
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_heatmaps.jpg"), hm)
                 # img[:, :, 0] += hm
-                cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_img.jpg"), img)
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_center.jpg"),
                             cv2.resize(centers[0] * 255, (192, 192)))
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_regs0.jpg"), cv2.resize(regs[0] * 255, (192, 192)))
