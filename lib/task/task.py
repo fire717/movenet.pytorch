@@ -495,7 +495,7 @@ class Task():
                 model_path = json.loads(f.readlines()[0])
                 str1 = ''
             init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
-            self.init_epoch = init_epoch + 1
+            self.init_epoch = init_epoch
             print(model_path)
         self.model.load_state_dict(torch.load(model_path,map_location=self.device))
 
