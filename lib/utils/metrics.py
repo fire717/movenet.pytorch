@@ -21,7 +21,7 @@ def getDist(pre, labels):
     return res
 
 
-def getAccRight(dist, th=5 / cfg['img_size']):
+def getAccRight(dist, th = cfg['th'] / cfg['img_size']):
     """
     input:
             dist: [batchsize, 7]
