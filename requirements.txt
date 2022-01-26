@@ -1,6 +1,9 @@
-numpy
-pandas
-opencv-python
+numpy~=1.21.4
+pandas~=1.3.5
+opencv-python~=4.5.5.62
 torch==1.7.0
-torchvision==0.8.1
-albumentations
+torchvision==0.11.2
+albumentations~=1.1.0
+
+Pillow~=8.4.0
+torchsummary~=1.5.1
