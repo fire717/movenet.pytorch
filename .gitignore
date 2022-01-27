@@ -1,15 +1,15 @@
 __pycache__
-*.jpg
-*.png
 *.zip
 *.rar
 *.log
-*.onnx
 *.bak
-*.pth
+*.onnx
 
 /lib/__pycache__
-/data
+/data/annotations
+/data/train2017
+/data/val2017
+/data/croped
 /output/show_imgs
 /output/detect
 

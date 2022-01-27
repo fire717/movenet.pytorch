@@ -29,7 +29,7 @@ def main(cfg):
 
 
     run_task = Task(cfg, model)
-    run_task.modelLoad("output/mbv2_e105_valacc0.80255.pth")
+    run_task.modelLoad("output/e91_valacc0.79763.pth")
 
 
     run_task.predict(test_loader, "output/predict")

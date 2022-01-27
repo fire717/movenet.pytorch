@@ -6,7 +6,7 @@ https://github.com/fire717
 cfg = {
     ##### Global Setting
     'GPU_ID': '0',
-    "num_workers":4,
+    "num_workers":8,
     "random_seed":42,
     "cfg_verbose":True,
 
@@ -32,7 +32,7 @@ cfg = {
     ##### Train Hyperparameters
     'learning_rate':0.001,#1.25e-4
     'batch_size':64,
-    'epochs':110,
+    'epochs':120,
     'optimizer':'Adam',  #Adam  SGD
     'scheduler':'MultiStepLR-70,100-0.1', #default  SGDR-5-2  CVPR   step-4-0.8 MultiStepLR
     'weight_decay' : 5.e-4,#0.0001,

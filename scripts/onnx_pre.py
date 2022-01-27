@@ -19,14 +19,14 @@ import time
 
 import onnxruntime as rt
 
-model_path = 'pose_sim.onnx'
+model_path = '../output/pose.onnx'
 sess=rt.InferenceSession(model_path)#model_path就是模型的地址
 input_name=sess.get_inputs()[0].name
 
 
-img = cv2.imread( '../2021-09-06_11-13-10.jpg')
+img = cv2.imread( '../data/croped/imgs/000000000036_0.jpg')
 print("img shape: ", img.shape)
-# inp = cv2.resize(img, ( 192, 192))
+img = cv2.resize(img, ( 192, 192))
 img = img[:, :, [ 2, 1, 0]] # BGR2RGB
 
 data = img.reshape( 1, img.shape[ 0], img.shape[ 1], 3)

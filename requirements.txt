@@ -1,9 +1,9 @@
-jason
-numpy
-pandas
 opencv-python
-torch==1.7.0
+json
+numpy
 torchvision==0.8.1
+torch==1.7.0
+pandas
 albumentations
 torchsummary
-onnx
+onnxruntime

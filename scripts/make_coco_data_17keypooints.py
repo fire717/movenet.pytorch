@@ -201,7 +201,7 @@ def main(img_dir, labels_path, output_name, output_img_dir):
                     kx = (keypoints2[kid2][0]+pad_left-new_x0)/new_w
                     ky = (keypoints2[kid2][1]+pad_top-new_y0)/new_h
                     if kx>0 and kx<1 and ky>0 and ky<1:
-                        other_keypoints[kid].append([kx,ky])
+                        other_keypoints[kid2].append([kx,ky])
 
             save_item = {
                          "img_name":save_name,
