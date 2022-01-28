@@ -43,6 +43,10 @@ class Task():
                                       self.cfg['learning_rate'],
                                       self.cfg['weight_decay'])
 
+        self.val_losses = np.zeros([10])
+        self.early_stop = False
+        self.val_loss_best = np.Inf
+
         # scheduler
         self.scheduler = getSchedu(self.cfg['scheduler'], self.optimizer)
 
@@ -59,6 +63,8 @@ class Task():
         for epoch in range(self.init_epoch,self.init_epoch+self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
             self.onValidation(val_loader, epoch)
+            if self.early_stop:
+                break
 
         self.onTrainEnd()
 
@@ -463,8 +469,15 @@ class Task():
         else:
             self.scheduler.step()
 
+        # save the lastest loass in loss vector
+        self.val_losses[:-1] = self.val_losses[1:]
+        self.val_losses[-1] = total_loss_sum
+
+        self.check_early_stop()
+
         save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, np.mean(right_count / total_count))
-        self.modelSave(save_name)
+        self.modelSave(save_name,total_loss_sum<self.val_loss_best)
+        self.val_loss_best = min(self.val_loss_best, total_loss_sum)
 
     def onTest(self):
         self.model.eval()
@@ -502,11 +515,19 @@ class Task():
         if data_parallel:
             self.model = torch.nn.DataParallel(self.model)
 
-    def modelSave(self, save_name):
-        fullname = os.path.join(self.cfg['save_dir'], save_name)
-        torch.save(self.model.state_dict(), fullname)
-        with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
-            json.dump(fullname, f, ensure_ascii=False)
+    def modelSave(self, save_name,is_best=False):
+        if self.cfg['save_best_only']:
+            if is_best:
+                fullname_best = os.path.join(self.cfg['save_dir'], "best.pth")
+                torch.save(self.model.state_dict(), fullname_best)
+                with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
+                    json.dump(fullname_best, f, ensure_ascii=False)
+        else:
+            fullname = os.path.join(self.cfg['save_dir'], save_name)
+            torch.save(self.model.state_dict(), fullname)
+
+            with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
+                json.dump(fullname, f, ensure_ascii=False)
         # print("Save model to: ",save_name)
 
     def add_to_tb(self, heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss, total_loss, acc, epoch,
@@ -522,3 +543,11 @@ class Task():
         self.tb.add_scalar(label + "Regression Loss", regs_loss, epoch)
         self.tb.add_scalar(label + "Offset Loss", offset_loss, epoch)
         self.tb.add_scalar(label + "Accuracy", acc, epoch)
+
+    def check_early_stop(self):
+        losses = self.val_losses
+        l = int(len(losses))/2
+        stripold = losses[:l]
+        stripnew = losses[l:]
+        if np.mean(stripold) <= np.mean(stripnew) :
+            self.early_stop = True
