@@ -30,6 +30,7 @@ cfg = {
 
     'pin_memory': True,
 
+
     ##### Train Hyperparameters
     'learning_rate': 0.001,  # 1.25e-4
     'batch_size': 64,

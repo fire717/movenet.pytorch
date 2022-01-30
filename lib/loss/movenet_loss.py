@@ -53,7 +53,7 @@ class MovenetLoss(torch.nn.Module):
         # self.range_weight_x = torch.from_numpy(np.array([[x for x in range(48)] for _ in range(48)]))
         # self.range_weight_y = self.range_weight_x.T 
 
-        self.boneloss = JointBoneLoss(7)
+        self.boneloss = JointBoneLoss(17)
 
     def l1(self, pre, target, kps_mask):
         # print("1 ",pre.shape, pre.device)
