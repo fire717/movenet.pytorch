@@ -11,7 +11,7 @@ import random
 
 
 
-with open(r"/home/ggoyal/data/mpii/poses_norm.json",'r') as f:
+with open(r"/home/ggoyal/data/mpii/anno/poses.json",'r') as f:
     data = json.loads(f.readlines()[0])  
 print("total: ", len(data))
 print(data[0])
@@ -25,8 +25,8 @@ ratio = int((val_count/100) *len(data))
 print("val_nums", val_count)
 print("ratio", ratio)
 
-data_train = data[:ratio]
-data_val = data[ratio:]
+data_val = data[:ratio]
+data_train = data[ratio:]
 # for d in data:
 #     if random.random()>ratio:
 #         data_train.append(d)
@@ -34,8 +34,8 @@ data_val = data[ratio:]
 #         data_val.append(d)
 
 print(len(data_train), len(data_val))
-with open("/home/ggoyal/data/mpii/train.json",'w') as f:
+with open("/home/ggoyal/data/mpii/anno/train_2.json",'w') as f:
     json.dump(data_train, f, ensure_ascii=False)
 
-with open("/home/ggoyal/data/mpii/val.json",'w') as f:
+with open("/home/ggoyal/data/mpii/anno/val_2.json",'w') as f:
     json.dump(data_val, f, ensure_ascii=False)

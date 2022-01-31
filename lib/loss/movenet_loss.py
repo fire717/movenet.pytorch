@@ -41,8 +41,9 @@ class JointBoneLoss(torch.nn.Module):
 
 
 class MovenetLoss(torch.nn.Module):
-    def __init__(self, use_target_weight=False, target_weight=[1]):
+    def __init__(self, cfg, use_target_weight=False, target_weight=[1]):
         super(MovenetLoss, self).__init__()
+        self.cfg = cfg
         self.mse = torch.nn.MSELoss(size_average=True)
         self.use_target_weight = use_target_weight
         self.target_weight = target_weight
@@ -53,7 +54,7 @@ class MovenetLoss(torch.nn.Module):
         # self.range_weight_x = torch.from_numpy(np.array([[x for x in range(48)] for _ in range(48)]))
         # self.range_weight_y = self.range_weight_x.T 
 
-        self.boneloss = JointBoneLoss(17)
+        self.boneloss = JointBoneLoss(cfg["num_classes"])
 
     def l1(self, pre, target, kps_mask):
         # print("1 ",pre.shape, pre.device)
@@ -377,10 +378,10 @@ class MovenetLoss(torch.nn.Module):
 
         return [heatmap_loss, bone_loss, center_loss, regs_loss, offset_loss]
 
-
-movenetLoss = MovenetLoss(use_target_weight=False)
-
-
-def calculate_loss(predict, label):
-    loss = movenetLoss(predict, label)
-    return loss
+#
+# movenetLoss = MovenetLoss(use_target_weight=False)
+#
+#
+# def calculate_loss(predict, label):
+#     loss = movenetLoss(predict, label)
+#     return loss

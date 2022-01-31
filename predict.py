@@ -27,7 +27,8 @@ def main(cfg):
 
 
     run_task = Task(cfg, model)
-    run_task.modelLoad("/home/ggoyal/data/mpii/output/e1000_valacc0.66665.pth")
+    run_task.modelLoad("/home/ggoyal/data/mpii/output/e300_valacc0.86824.pth")
+    # run_task.modelLoad("/home/ggoyal/data/mpii/output/e1000_valacc0.66665.pth")
     # run_task.modelLoad("output/mbv2_e105_valacc0.80255.pth") # for coco
     # run_task.modelLoad(cfg["newest_ckpt"])
 

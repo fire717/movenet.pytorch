@@ -749,6 +749,7 @@ class DataAug:
         """
         pad_color = random.randint(0,255)
 
+
         new_img = deepcopy(img)
         new_label = deepcopy(label)
 

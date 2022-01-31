@@ -16,9 +16,8 @@ from torch.utils.tensorboard import SummaryWriter
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash
-from lib.utils.metrics import myAcc
 from lib.visualization.visualization import superimpose_pose
-
+from lib.utils.metrics import myAcc, pckh
 
 class Task():
     def __init__(self, cfg, model):
@@ -35,7 +34,7 @@ class Task():
 
         ############################################################
         # loss
-        self.loss_func = MovenetLoss()
+        self.loss_func = MovenetLoss(self.cfg)
 
         # optimizer
         self.optimizer = getOptimizer(self.cfg['optimizer'],
@@ -74,7 +73,7 @@ class Task():
 
         self.model.eval()
         correct = 0
-
+        size = self.cfg["img_size"]
         with torch.no_grad():
 
             for (img, img_name) in data_loader:
@@ -114,12 +113,12 @@ class Task():
 
                 # print(centers.shape)
 
-                hm = cv2.resize(np.sum(heatmaps, axis=0), (192, 192)) * 255
+                hm = cv2.resize(np.sum(heatmaps, axis=0), (size, size)) * 255
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_heatmaps.jpg"), hm)
                 # img[:, :, 0] += hm
                 cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_center.jpg"),
-                            cv2.resize(centers[0] * 255, (192, 192)))
-                cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_regs0.jpg"), cv2.resize(regs[0] * 255, (192, 192)))
+                            cv2.resize(centers[0] * 255, (size, size)))
+                cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_regs0.jpg"), cv2.resize(regs[0] * 255, (size, size)))
 
     def label(self, data_loader, save_dir):
         self.model.eval()
@@ -229,13 +228,16 @@ class Task():
     def evaluate(self, data_loader):
         self.model.eval()
 
-        correct = 0
-        total = 0
+        correct = 0.0
+        total = 0.0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, head_size,_) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0:
-                    print('Finish ', batch_idx)
+                    print('Finished samples: ', batch_idx)
+                    if batch_idx>10:
+                        acc_intermediate = correct / total
+                        print('[Info] acc: {:.3f}% \n'.format(100. * acc_intermediate))
                 # if 'mypc'  not in img_names[0]:
                 #     continue
 
@@ -251,10 +253,12 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
                 # n
-                acc = myAcc(pre, gt)
-
-                correct += sum(acc)
-                total += len(acc)
+                pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
+                # print(pck)
+                # print(correct,total)
+                # exit()
+                correct += sum(pck)
+                total += len(labels)
 
         acc = correct / total
         print('[Info] acc: {:.3f}% \n'.format(100. * acc))
@@ -312,10 +316,10 @@ class Task():
 
         heatmap_loss_sum = bone_loss_sum = center_loss_sum = regs_loss_sum = offset_loss_sum = 0
 
-        right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
+        right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(train_loader):
+        for batch_idx, (imgs, labels, kps_mask, img_names,head_size,_) in enumerate(train_loader):
 
             # if '000000242610_0' not in img_names[0]:
             #     continue
@@ -355,9 +359,12 @@ class Task():
             # bb
             # print(pre.shape, gt.shape)
             # b
-            acc = myAcc(pre, gt)
-            right_count += acc
+            # acc = myAcc(pre, gt)
+            # print(head_size.shape)
+            pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
+            right_count += pck
             total_count += labels.shape[0]
+
 
             if batch_idx % self.cfg['log_interval'] == 0:
                 print('\r',
@@ -377,14 +384,14 @@ class Task():
                                               center_loss.item(),
                                               regs_loss.item(),
                                               offset_loss.item(),
-                                              np.mean(right_count / total_count)),
+                                              sum(right_count) / total_count),
                       end='', flush=True)
             # break
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
         # Tensorboard additions
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
-                       total_loss_sum, np.mean(right_count / total_count), epoch + 1, label="Train")
+                       total_loss_sum, sum(right_count) / total_count, epoch + 1, label="Train")
 
     def onTrainEnd(self):
         del self.model
@@ -408,7 +415,7 @@ class Task():
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(val_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names,head_size,_) in enumerate(val_loader):
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
@@ -432,7 +439,8 @@ class Task():
 
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                acc = myAcc(pre, gt)
+                # acc = pckh(pre, gt)
+                acc = pckh(pre, gt, head_size, self.cfg["th"]/100)
 
                 # right_count1 += acc1
                 right_count += acc

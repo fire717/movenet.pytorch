@@ -297,27 +297,28 @@ def generate_heatmap3(x, y, other_keypoints, size, sigma):
     return target
 
 
+def get_headsize(head_size_scaled, img_size):
+    head_size = (head_size_scaled * float(img_size // 4))
+    return head_size
+
+
 ######## dataloader
 class TensorDataset(Dataset):
-
     def __init__(self, data_labels, img_dir, img_size, data_aug=None, num_classes=17):
         self.data_labels = data_labels
         self.img_dir = img_dir
         self.data_aug = data_aug
         self.img_size = img_size
         self.num_classes = num_classes
-
         self.interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA,
                                cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
 
     def __getitem__(self, index):
-
         item = self.data_labels[index]
         # print(len(self.data_labels), index)
         # while 'yoga_img_514' not in item["img_name"]:
         #     index+=1
         #     item = self.data_labels[index]
-
         # while len(item['other_centers'])==0:
         #     index+=1
         #     item = self.data_labels[index]
@@ -328,6 +329,8 @@ class TensorDataset(Dataset):
         """
         item = {
                      "img_name":save_name,
+                     "head_size":head_size,
+                     "head_size_scaled":head_size_scaled,
                      "keypoints":save_keypoints,
                      "center":save_center,
                      "other_centers":other_centers,
@@ -337,52 +340,42 @@ class TensorDataset(Dataset):
         # label_str_list = label_str.strip().split(',')
         # [name,h,w,keypoints...]
         img_path = os.path.join(self.img_dir, item["img_name"])
-
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
         img = cv2.resize(img, (self.img_size, self.img_size),
                          interpolation=random.choice(self.interp_methods))
-
         #### Data Augmentation
         # print(item)
         if self.data_aug is not None:
             img, item = self.data_aug(img, item)
         # print(item)
-
         # cv2.imwrite(os.path.join("img.jpg"), img)
-
         img = img.astype(np.float32)
         img = np.transpose(img, axes=[2, 0, 1])
-
+        # head_size = item.get("head_size", None)
+        head_size_scaled = item.get("head_size_scaled", None)
         keypoints = item["keypoints"]
         center = item['center']
         other_centers = item["other_centers"]
         other_keypoints = item["other_keypoints"]
-
         # print(keypoints)
         # [0.640625   0.7760417  2, ] (21,)
-
         kps_mask = np.ones(len(keypoints) // 3)
         for i in range(len(keypoints) // 3):
             ##0没有标注;1有标注不可见（被遮挡）;2有标注可见
             if keypoints[i * 3 + 2] == 0:
                 kps_mask[i] = 0
-
         # img = img.transpose((1,2,0))
         # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         # cv2.imwrite(os.path.join("_img.jpg"), img)
-
         heatmaps, sigma = label2heatmap(keypoints, other_keypoints, self.img_size)  # (17, 48, 48)
         # 超出边界则设为全0
-
         # img = img.transpose((1,2,0))
         # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         # hm = cv2.resize(np.sum(heatmaps,axis=0)*255,(192,192))
         # cv2.imwrite(os.path.join("_hm.jpg"), hm)
         # cv2.imwrite(os.path.join("_img.jpg"), img)
         # b
-
         cx = min(max(0, int(center[0] * self.img_size // 4)), self.img_size // 4 - 1)
         cy = min(max(0, int(center[1] * self.img_size // 4)), self.img_size // 4 - 1)
         # if '000000103797_0' in item["img_name"]:
@@ -393,9 +386,7 @@ class TensorDataset(Dataset):
         # print(centers[0,21:26,21:26])
         # print(centers[0,12:20,27:34])
         # print(centers[0,y,x],x,y)
-
         # cx2,cy2 = extract_keypoints(centers)
-
         # b
         # cx2,cy2 = maxPoint(centers)
         # cx2,cy2 = cx2[0][0],cy2[0][0]
@@ -405,7 +396,6 @@ class TensorDataset(Dataset):
         # print(centers[0,17:21,22:26])
         #     print(cx,cy ,cx2,cy2)
         #     raise Exception("center changed after label2center!")
-
         # print(keypoints[0]*48,keypoints[1]*48)
         regs = label2reg(keypoints, cx, cy, self.img_size)  # (14, 48, 48)
         # cv2.imwrite(os.path.join("_regs.jpg"), regs[0]*255)
@@ -415,29 +405,29 @@ class TensorDataset(Dataset):
         # print("regs[0,cy,cx]: ", regs[0,cy,cx])
         # for i in range(14):
         #     print(regs[i,y,x])
-
         offsets = label2offset(keypoints, cx, cy, regs, self.img_size)  # (14, 48, 48)
         # for i in range(14):
         #     print(regs[i,y,x])
         # b
         # print(heatmaps.shape, regs.shape, offsets.shape)
         # b
-
         # img = img.transpose((1,2,0))
         # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         # for i in range(7):
         #     cv2.imwrite("_heatmaps%d.jpg" % i,cv2.resize(heatmaps[i]*255-i*20,(192,192)))
         #     img[:,:,0]+=cv2.resize(heatmaps[i]*255-i*20,(192,192))
         # cv2.imwrite(os.path.join("_img.jpg"), img)
-
         n = self.num_classes
-        labels = np.concatenate([heatmaps[:n,:,:], centers, regs[:2*n,:,:], offsets[:2*n,:,:]], axis=0)
+        labels = np.concatenate([heatmaps[:n, :, :], centers, regs[:2 * n, :, :], offsets[:2 * n, :, :]], axis=0)
         # labels = np.concatenate([heatmaps, centers, regs, offsets], axis=0)
-
         # print("labels: " + str(labels.shape))
         # print(heatmaps.shape,centers.shape,regs.shape,offsets.shape,labels.shape)
         # print(labels.shape)
-        return img, labels, kps_mask, img_path
+        head_size = get_headsize(head_size_scaled, self.img_size)
+        if head_size is None or head_size_scaled is None:
+            return img, labels, kps_mask, img_path
+        else:
+            return img, labels, kps_mask, img_path, head_size, head_size_scaled
 
     def __len__(self):
         return len(self.data_labels)

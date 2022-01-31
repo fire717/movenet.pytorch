@@ -57,3 +57,23 @@ def myAcc(output, target):
     dist = getDist(output, target)
     cate_acc = getAccRight(dist)
     return cate_acc
+
+
+def pckh(output, target, head_sizes, threshold=0.1,num_classes = 13):
+    if len(output.shape) == 4:
+        output = heatmap2locate(output)
+        target = heatmap2locate(target)
+    # compute PCK's threshold as percentage of head size in pixels for each pose
+    thresholds_head = head_sizes * threshold
+    # compute euclidean distances between joints
+    distances = np.linalg.norm(output.reshape((-1,num_classes,2)) - target.reshape((-1,num_classes,2)), axis=2)
+    # compute correct keypoints
+    # print(thresholds_head.unsqueeze(1).expand(-1,distances.shape[1]))
+    # print(head_sizes)
+    th_head_expanded = thresholds_head.unsqueeze(1).expand(-1,distances.shape[1])
+    correct_keypoints = (distances <= th_head_expanded.numpy()).astype(int)
+    # print(correct_keypoints)
+    # compute pck
+    pck = np.sum(correct_keypoints, axis=1) / correct_keypoints.shape[1]
+    # print(pck)
+    return pck
