@@ -504,7 +504,7 @@ class Task():
 
         self.check_early_stop()
 
-        save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, (right_count / total_count))
+        save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, (acc_joint_mean_intermediate))
         self.modelSave(save_name,total_loss_sum<self.val_loss_best)
         self.val_loss_best = min(self.val_loss_best, total_loss_sum)
 
@@ -579,7 +579,7 @@ class Task():
 
     def check_early_stop(self):
         losses = self.val_losses
-        l = int(len(losses))/2
+        l = int(len(losses))//2
         stripold = losses[:l]
         stripnew = losses[l:]
         if np.mean(stripold) <= np.mean(stripnew) :

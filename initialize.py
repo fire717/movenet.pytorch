@@ -16,7 +16,7 @@ def main(cfg):
                     mode='train')
 
         run_task = Task(cfg, model)
-        run_task.modelSave('e0_accu0.pth')
+        run_task.modelSave('e0_accu0.pth',is_best=True)
 
 
 if __name__ == '__main__':
