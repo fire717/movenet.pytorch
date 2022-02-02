@@ -42,8 +42,8 @@ class Task():
                                       self.cfg['learning_rate'],
                                       self.cfg['weight_decay'])
 
-        self.val_losses = np.zeros([10])
-        self.early_stop = False
+        self.val_losses = np.zeros([20])
+        self.early_stop = 0
         self.val_loss_best = np.Inf
 
         # scheduler
@@ -62,7 +62,7 @@ class Task():
         for epoch in range(self.init_epoch,self.init_epoch+self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
             self.onValidation(val_loader, epoch)
-            if self.early_stop:
+            if self.early_stop > 10:
                 break
 
         self.onTrainEnd()
@@ -166,9 +166,10 @@ class Task():
         self.model.eval()
 
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names,head_size,head_size_norm) in enumerate(data_loader):
 
-                if batch_idx % 5000 == 0:
+                if batch_idx % 50 == 0 and batch_idx > 0:
+                    exit()
                     print('Finish ', batch_idx)
                 # if 'mypc'  not in img_names[0]:
                 #     continue
@@ -179,16 +180,33 @@ class Task():
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
 
+
+                size = self.cfg["img_size"]
+                text_location = (10, size*2 - 10) #bottom left corner of the image
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                fontScale = 0.8
+                fontColor = (0, 0, 255)
+                thickness = 1
+                lineType = 2
+
                 output = self.model(imgs)
 
                 pre = movenetDecode(output, kps_mask, mode='output',num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
                 # n
-                acc = myAcc(pre, gt)
+                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                # print(pck)
+                # print(correct,total)
+
+                correct_kps = pck["total_correct"]
+                total_kps = pck["total_keypoints"]
+                # joint_correct += pck["correct_per_joint"]
+                # joint_total += pck["anno_keypoints_per_joint"]
 
                 # if 'mypc1_full_1180' in img_names[0]:
-                if 0 / 7 < sum(acc) / len(acc) <= 5 / 7:
+                if 1:
+                # if 0 / 7 < sum(acc) / len(acc) <= 5 / 7:
                     # if sum(acc)/len(acc)==1:
                     # print(pre)
                     # print(gt)
@@ -200,13 +218,13 @@ class Task():
                     save_name = os.path.join(save_dir, basename)
 
                     # print(os.path.join(save_dir, basename[:-4] + "_hm_pre.jpg"))
-                    hm = cv2.resize(np.sum(output[0][0].cpu().numpy(), axis=0), (192, 192)) * 255
-                    cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_pre.jpg"), hm)
+                    # hm = cv2.resize(np.sum(output[0][0].cpu().numpy(), axis=0), (size, size)) * 255
+                    # cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_pre.jpg"), hm)
                     # cv2.imshow("prediction",hm)
                     # cv2.waitKey()
 
-                    hm = cv2.resize(np.sum(labels[0, :7, :, :].cpu().numpy(), axis=0), (192, 192)) * 255
-                    cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_gt.jpg"), hm)
+                    # hm = cv2.resize(np.sum(labels[0, :, :, :].cpu().numpy(), axis=0), (size, size)) * 255
+                    # cv2.imwrite(os.path.join(save_dir, basename[:-4] + "_hm_gt.jpg"), hm)
 
                     img = np.transpose(imgs[0].cpu().numpy(), axes=[1, 2, 0])
                     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -215,13 +233,29 @@ class Task():
                     for i in range(len(gt[0]) // 2):
                         x = int(gt[0][i * 2] * w)
                         y = int(gt[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 5, (0, 255, 0), 3)
+                        cv2.circle(img, (x, y), 5, (0, 255, 0), 3) # gt keypoints in green
 
                         x = int(pre[0][i * 2] * w)
                         y = int(pre[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 3, (0, 0, 255), 2)
+                        cv2.circle(img, (x, y), 3, (0, 0, 255), 2) # predicted keypoints in red
 
-                    cv2.imwrite(save_name, img)
+                img2 = cv2.resize(img, (size*2,size*2), interpolation=cv2.INTER_LINEAR)
+                str = "acc: %.2f, head: %.2f " % (pck["total_correct"]/ pck["total_keypoints"],head_size)
+                cv2.putText(img2, str,
+                            text_location,
+                            font,
+                            fontScale,
+                            fontColor,
+                            thickness,
+                            lineType)
+                cv2.line(img2, [10, 10], [10 + int(head_size*2), 10], [0, 0, 255], 3)
+                cv2.imwrite(save_name, img2)
+                # cv2.imshow("prediction",img)
+                # cv2.waitKey()
+                if basename == "025766192.jpg":
+                    print(pck)
+                    print("prediction: ",pre)
+                    print("gt: ",gt)
 
                     # bb
 
@@ -233,7 +267,7 @@ class Task():
         joint_correct = np.zeros([self.cfg["num_classes"]])
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size,_) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, head_size,head_size_norm) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx>10:
                     print('Finished samples: ', batch_idx)
@@ -253,7 +287,7 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
 
-                pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
+                pck = pckh(pre,gt,head_size_norm,self.cfg["th"]/100,self.cfg["num_classes"])
                 # print(pck)
                 # print(correct,total)
 
@@ -327,7 +361,7 @@ class Task():
         right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names,head_size,_) in enumerate(train_loader):
+        for batch_idx, (imgs, labels, kps_mask, img_names,head_size,head_size_norm) in enumerate(train_loader):
 
             # if '000000242610_0' not in img_names[0]:
             #     continue
@@ -368,7 +402,7 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             # acc = myAcc(pre, gt)
-            pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
+            pck = pckh(pre,gt,head_size_norm,self.cfg["th"]/100,self.cfg["num_classes"])
             # right_count += pck
             # total_count += labels.shape[0]
             correct_kps += pck["total_correct"]
@@ -431,7 +465,7 @@ class Task():
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names,head_size,_) in enumerate(val_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names,head_size,head_size_norm) in enumerate(val_loader):
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
@@ -456,7 +490,7 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 # acc = pckh(pre, gt)
-                pck = pckh(pre, gt, head_size, self.cfg["th"] / 100, self.cfg["num_classes"])
+                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
                 # right_count += pck
                 # total_count += labels.shape[0]
                 correct_kps += pck["total_correct"]
@@ -581,7 +615,9 @@ class Task():
     def check_early_stop(self):
         losses = self.val_losses
         l = int(len(losses))//2
-        stripold = losses[:l]
-        stripnew = losses[l:]
-        if np.mean(stripold) <= np.mean(stripnew) :
-            self.early_stop = True
+        strip_old = losses[:l]
+        strip_new = losses[l:]
+        if np.mean(strip_old) <= np.mean(strip_new) :
+            self.early_stop += 1
+        else:
+            self.early_stop += 0

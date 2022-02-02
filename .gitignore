@@ -12,4 +12,9 @@ __pycache__
 /data/croped
 /output/show_imgs
 /output/detect
+/output/predict
+runs/
+.idea/
+testers.py
+config.py
 

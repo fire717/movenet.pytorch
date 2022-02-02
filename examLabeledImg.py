@@ -29,10 +29,10 @@ def main(cfg):
 
 
     run_task = Task(cfg, model)
-    run_task.modelLoad("output/test/e105_valacc0.98326.pth")
+    run_task.modelLoad("/media/ggoyal/Data/data/mpii/output/e27_valacc0.99331.pth")
 
 
-    run_task.exam(data_loader, "../data/all/exam3")
+    run_task.exam(data_loader, "/media/ggoyal/Data/data/mpii/examine")
 
 
 
