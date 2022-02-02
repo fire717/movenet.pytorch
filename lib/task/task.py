@@ -502,7 +502,8 @@ class Task():
         self.val_losses[:-1] = self.val_losses[1:]
         self.val_losses[-1] = total_loss_sum
 
-        self.check_early_stop()
+        if epoch>20:
+            self.check_early_stop()
 
         save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, (acc_joint_mean_intermediate))
         self.modelSave(save_name,total_loss_sum<self.val_loss_best)
