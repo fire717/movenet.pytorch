@@ -63,17 +63,43 @@ def pckh(output, target, head_sizes, threshold=0.1,num_classes = 13):
     if len(output.shape) == 4:
         output = heatmap2locate(output)
         target = heatmap2locate(target)
+
+    pck={}
+
     # compute PCK's threshold as percentage of head size in pixels for each pose
     thresholds_head = head_sizes * threshold
+
     # compute euclidean distances between joints
-    distances = np.linalg.norm(output.reshape((-1,num_classes,2)) - target.reshape((-1,num_classes,2)), axis=2)
+    output = output.reshape((-1,num_classes,2))
+    target = target.reshape((-1,num_classes,2))
+    distances = np.linalg.norm( output - target , axis=2)
+
     # compute correct keypoints
-    # print(thresholds_head.unsqueeze(1).expand(-1,distances.shape[1]))
-    # print(head_sizes)
     th_head_expanded = thresholds_head.unsqueeze(1).expand(-1,distances.shape[1])
     correct_keypoints = (distances <= th_head_expanded.numpy()).astype(int)
-    # print(correct_keypoints)
-    # compute pck
-    pck = np.sum(correct_keypoints, axis=1) / correct_keypoints.shape[1]
+
+    # remove not annotated keypoints from pck computation
+    correct_keypoints = correct_keypoints * (target[:, :, 0] != -1).astype(int)
+    annotated_keypoints_num_samples = np.sum((target[:, :, 0] != -1).astype(int), axis=1)
+    annotated_keypoints_num_joints = np.sum((target[:, :, 0] != -1).astype(int), axis=0)
+    # print("correct_keypoints: ",correct_keypoints.shape)
+    # print("annotated_keypoints_num: ",annotated_keypoints_num.shape)
+
+    # compute pck in all different formats
+    pck_per_joint = np.sum(correct_keypoints, axis=0) / annotated_keypoints_num_joints
+    pck_per_sample = np.sum(correct_keypoints, axis=1) / annotated_keypoints_num_samples
+    # pck_per_keypoint = sum(sum(correct_keypoints))/ sum(annotated_keypoints_num_joints)
+    pck["correct_per_sample"] = np.sum(correct_keypoints, axis=1)
+    pck["correct_per_joint"] = np.sum(correct_keypoints, axis=0)
+    pck["per_joint_mean"] = np.mean(pck_per_joint)
+    pck["per_sample_mean"] = np.mean(pck_per_sample)
+    pck["total_keypoints"] = sum(annotated_keypoints_num_joints)
+    pck["anno_keypoints_per_joint"] = annotated_keypoints_num_joints
+    pck["anno_keypoints_per_sample"] = annotated_keypoints_num_samples
+    pck["total_correct"] = sum(sum(correct_keypoints))
+
+
     # print(pck)
+    # print(pck_joints)
+
     return pck

@@ -10,13 +10,13 @@ import cv2
 from pathlib import Path
 import json
 
-import torch.nn.functional as F
+# import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash
-from lib.visualization.visualization import superimpose_pose
+# from lib.visualization.visualization import superimpose_pose
 from lib.utils.metrics import myAcc, pckh
 
 class Task():
@@ -228,20 +228,20 @@ class Task():
     def evaluate(self, data_loader):
         self.model.eval()
 
-        correct = 0.0
-        total = 0.0
+        correct_kps = 0.0
+        total_kps = 0.0
+        joint_correct = np.zeros([self.cfg["num_classes"]])
+        joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
             for batch_idx, (imgs, labels, kps_mask, img_names, head_size,_) in enumerate(data_loader):
 
-                if batch_idx % 100 == 0:
+                if batch_idx % 100 == 0 and batch_idx>10:
                     print('Finished samples: ', batch_idx)
-                    if batch_idx>10:
-                        acc_intermediate = correct / total
-                        print('[Info] acc: {:.3f}% \n'.format(100. * acc_intermediate))
-                # if 'mypc'  not in img_names[0]:
-                #     continue
+                    acc_intermediate = correct_kps / total_kps
+                    acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
+                    print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
+                    print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean_intermediate))
 
-                # print('-----------------')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
@@ -252,16 +252,20 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output',num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label',num_joints=self.cfg["num_classes"])
 
-                # n
+
                 pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
                 # print(pck)
                 # print(correct,total)
-                # exit()
-                correct += sum(pck)
-                total += len(labels)
 
-        acc = correct / total
-        print('[Info] acc: {:.3f}% \n'.format(100. * acc))
+                correct_kps += pck["total_correct"]
+                total_kps += pck["total_keypoints"]
+                joint_correct += pck["correct_per_joint"]
+                joint_total += pck["anno_keypoints_per_joint"]
+
+        acc = correct_kps / total_kps
+        acc_joint_mean = np.mean(joint_correct/joint_total)
+        print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc))
+        print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean))
 
     def evaluateTest(self, data_loader):
         self.model.eval()
@@ -313,6 +317,10 @@ class Task():
         self.model.train()
         correct = 0
         count = 0
+        correct_kps = 0.0
+        total_kps = 0.0
+        joint_correct = np.zeros([self.cfg["num_classes"]])
+        joint_total = np.zeros([self.cfg["num_classes"]])
 
         heatmap_loss_sum = bone_loss_sum = center_loss_sum = regs_loss_sum = offset_loss_sum = 0
 
@@ -360,13 +368,16 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             # acc = myAcc(pre, gt)
-            # print(head_size.shape)
             pck = pckh(pre,gt,head_size,self.cfg["th"]/100,self.cfg["num_classes"])
-            right_count += pck
-            total_count += labels.shape[0]
-
+            # right_count += pck
+            # total_count += labels.shape[0]
+            correct_kps += pck["total_correct"]
+            total_kps += pck["total_keypoints"]
+            joint_correct += pck["correct_per_joint"]
+            joint_total += pck["anno_keypoints_per_joint"]
 
             if batch_idx % self.cfg['log_interval'] == 0:
+                acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
                 print('\r',
                       '%d/%d '
                       '[%d/%d] '
@@ -384,14 +395,14 @@ class Task():
                                               center_loss.item(),
                                               regs_loss.item(),
                                               offset_loss.item(),
-                                              sum(right_count) / total_count),
+                                              acc_joint_mean_intermediate),
                       end='', flush=True)
             # break
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
         # Tensorboard additions
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
-                       total_loss_sum, sum(right_count) / total_count, epoch + 1, label="Train")
+                       total_loss_sum, acc_joint_mean_intermediate, epoch + 1, label="Train")
 
     def onTrainEnd(self):
         del self.model
@@ -409,6 +420,11 @@ class Task():
 
         num_test_batches = 0.0
         self.model.eval()
+
+        correct_kps = 0.0
+        total_kps = 0.0
+        joint_correct = np.zeros([self.cfg["num_classes"]])
+        joint_total = np.zeros([self.cfg["num_classes"]])
 
         heatmap_loss_sum = bone_loss_sum = center_loss_sum = regs_loss_sum = offset_loss_sum = 0
 
@@ -440,12 +456,17 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 # acc = pckh(pre, gt)
-                acc = pckh(pre, gt, head_size, self.cfg["th"]/100)
+                pck = pckh(pre, gt, head_size, self.cfg["th"] / 100, self.cfg["num_classes"])
+                # right_count += pck
+                # total_count += labels.shape[0]
+                correct_kps += pck["total_correct"]
+                total_kps += pck["total_keypoints"]
+                joint_correct += pck["correct_per_joint"]
+                joint_total += pck["anno_keypoints_per_joint"]
+                acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
 
-                # right_count1 += acc1
-                right_count += acc
-                total_count += labels.shape[0]
-
+                # right_count += sum(acc)
+                # total_count += labels.shape[0]
                 # break
 
             print('LR: %f - '
@@ -463,14 +484,14 @@ class Task():
                       center_loss.item(),
                       regs_loss.item(),
                       offset_loss.item(),
-                      np.mean(right_count / total_count)),
+                      acc_joint_mean_intermediate),
                   )
             print()
 
         total_loss_sum = heatmap_loss_sum + center_loss_sum + regs_loss_sum + offset_loss_sum + bone_loss_sum
 
         self.add_to_tb(heatmap_loss_sum, bone_loss_sum, center_loss_sum, regs_loss_sum, offset_loss_sum,
-                       total_loss_sum, np.mean(right_count / total_count), epoch + 1, label="Val")
+                       total_loss_sum, acc_joint_mean_intermediate, epoch + 1, label="Val")
 
         if 'default' in self.cfg['scheduler']:
             self.scheduler.step(np.mean(right_count / total_count))
@@ -483,11 +504,11 @@ class Task():
 
         self.check_early_stop()
 
-        save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, np.mean(right_count / total_count))
+        save_name = 'e%d_valacc%.5f.pth' % (epoch + 1, (right_count / total_count))
         self.modelSave(save_name,total_loss_sum<self.val_loss_best)
         self.val_loss_best = min(self.val_loss_best, total_loss_sum)
 
-    def onTest(self):
+    def onTest(self, data_loader):
         self.model.eval()
 
         # predict
@@ -495,11 +516,11 @@ class Task():
         with torch.no_grad():
             # end = time.time()
             for i, (inputs, target, img_names) in enumerate(data_loader):
-                print("\r", str(i) + "/" + str(test_loader.__len__()), end="", flush=True)
+                print("\r", str(i) + "/" + str(data_loader.__len__()), end="", flush=True)
 
                 inputs = inputs.cuda()
 
-                output = model(inputs)
+                output = self.model(inputs)
                 output = output.data.cpu().numpy()
 
                 for i in range(output.shape[0]):
