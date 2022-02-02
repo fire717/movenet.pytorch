@@ -16,5 +16,3 @@ __pycache__
 runs/
 .idea/
 testers.py
-config.py
-
