@@ -549,8 +549,12 @@ class Task():
             if is_best:
                 fullname_best = os.path.join(self.cfg['save_dir'], "best.pth")
                 torch.save(self.model.state_dict(), fullname_best)
+
+                fullname = os.path.join(self.cfg['save_dir'], save_name)
+                torch.save(self.model.state_dict(), fullname)
                 with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
-                    json.dump(fullname_best, f, ensure_ascii=False)
+                    json.dump(fullname, f, ensure_ascii=False)
+
         else:
             fullname = os.path.join(self.cfg['save_dir'], save_name)
             torch.save(self.model.state_dict(), fullname)
