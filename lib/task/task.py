@@ -55,7 +55,7 @@ class Task():
     def train(self, train_loader, val_loader):
 
         if self.init_epoch == 0:
-            dummy_input1 = torch.randn(1, 3, 192, 192).cuda()
+            dummy_input1 = torch.randn(1, 3, 192, 192)
             self.tb.add_graph(self.model, dummy_input1)
         print()
 
