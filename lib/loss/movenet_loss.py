@@ -139,6 +139,7 @@ class MovenetLoss(torch.nn.Module):
 
     ###############
     def boneLoss(self, pred, target):
+        # los based on the size the of the limbs.
         # [64, 7, 48, 48]
         def _Frobenius(mat1, mat2):
             return torch.pow(torch.sum(torch.pow(mat1 - mat2, 2)), 0.5)

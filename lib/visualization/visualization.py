@@ -8,7 +8,6 @@ import cv2
 import numpy as np
 import json
 
-from config import cfg
 
 def superimpose_pose(img,pose,num_classes=13):
     """ inputs:

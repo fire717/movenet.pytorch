@@ -6,6 +6,7 @@ https://github.com/fire717
 from lib import init, Data, MoveNet, Task
 
 from config import cfg
+from lib.utils.utils import arg_parser
 
 
 # Script to create and save as images all the various outputs of the model
@@ -39,4 +40,5 @@ def main(cfg):
 
 
 if __name__ == '__main__':
+    cfg = arg_parser(cfg)
     main(cfg)

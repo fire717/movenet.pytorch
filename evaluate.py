@@ -8,6 +8,7 @@ import random
 from lib import init, Data, MoveNet, Task
 
 from config import cfg
+from lib.utils.utils import arg_parser
 
 
 def main(cfg):
@@ -27,4 +28,5 @@ def main(cfg):
 
 
 if __name__ == '__main__':
+    cfg = arg_parser(cfg)
     main(cfg)

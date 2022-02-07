@@ -4,10 +4,10 @@ https://github.com/fire717
 """
 import numpy as np
 
-from config import cfg
+# from config import cfg
 
 
-def getDist(pre, labels):
+def getDist(pre, labels,num_classes = 13):
     """
     input:
             pre: [batchsize, 14]
@@ -15,13 +15,13 @@ def getDist(pre, labels):
     return:
             dist: [batchsize, 7]
     """
-    pre = pre.reshape([-1, cfg["num_classes"], 2])
-    labels = labels.reshape([-1, cfg["num_classes"], 2])
+    pre = pre.reshape([-1, num_classes, 2])
+    labels = labels.reshape([-1, num_classes, 2])
     res = np.power(pre[:, :, 0] - labels[:, :, 0], 2) + np.power(pre[:, :, 1] - labels[:, :, 1], 2)
     return res
 
 
-def getAccRight(dist, th = cfg['th'] / cfg['img_size']):
+def getAccRight(dist, th):
     """
     input:
             dist: [batchsize, 7]
@@ -36,7 +36,7 @@ def getAccRight(dist, th = cfg['th'] / cfg['img_size']):
     return res
 
 
-def myAcc(output, target):
+def myAcc(output, target, th=0.5, num_classes = 13):
     """
     return [7,] ndarray
     """
@@ -54,8 +54,8 @@ def myAcc(output, target):
     # output[:,6:10] = output[:,6:10]+output[:,2:6]
     # output[:,10:14] = output[:,10:14]+output[:,6:10]
 
-    dist = getDist(output, target)
-    cate_acc = getAccRight(dist)
+    dist = getDist(output, target,num_classes)
+    cate_acc = getAccRight(dist,th)
     return cate_acc
 
 
@@ -97,7 +97,6 @@ def pckh(output, target, head_sizes, threshold=0.1,num_classes = 13):
     pck["anno_keypoints_per_joint"] = annotated_keypoints_num_joints
     pck["anno_keypoints_per_sample"] = annotated_keypoints_num_samples
     pck["total_correct"] = sum(sum(correct_keypoints))
-
 
     # print(pck)
     # print(pck_joints)

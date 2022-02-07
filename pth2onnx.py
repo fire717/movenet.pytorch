@@ -2,33 +2,22 @@
 @Fire
 https://github.com/fire717
 """
-import os
-import random
-import pandas as pd   
 import torch
-
 from lib import init, Data, MoveNet, Task
-
 from config import cfg
-
-
-
+from lib.utils.utils import arg_parser
 
 
 def main(cfg):
 
     init(cfg)
 
-
     model = MoveNet(num_classes=cfg["num_classes"],
                     width_mult=cfg["width_mult"],
                     mode='train')
-    
-
 
     run_task = Task(cfg, model)
     run_task.modelLoad('output/test/e100_valacc0.98349.pth')
-
 
     run_task.model.eval()
     run_task.model.to("cuda")
@@ -68,6 +57,7 @@ def main(cfg):
 
 
 if __name__ == '__main__':
+    cfg = arg_parser(cfg)
     main(cfg)
 
 
