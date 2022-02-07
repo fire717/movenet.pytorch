@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
 from lib.loss.movenet_loss import MovenetLoss
-from lib.utils.utils import printDash
+from lib.utils.utils import printDash, ensure_loc
 # from lib.visualization.visualization import superimpose_pose
 from lib.utils.metrics import myAcc, pckh
 
@@ -52,11 +52,12 @@ class Task():
 
         # tensorboard
         self.tb = SummaryWriter(comment=self.cfg['label'])
-        dummy_input1 = torch.randn(1, 3, 192, 192)
-        self.tb.add_graph(self.model, dummy_input1)
+        self.tb.add_graph(self.model, torch.randn(1, 3, 192, 192).to(self.device))
         self.tb.add_text("Hyperparameters: ", str(cfg))
         self.best_train_accuracy = 0
         self.best_val_accuracy = 0
+
+
 
     def train(self, train_loader, val_loader):
 
@@ -588,16 +589,16 @@ class Task():
     def modelSave(self, save_name, is_best=False):
         if self.cfg['save_best_only']:
             if is_best:
-                fullname_best = os.path.join(self.cfg['save_dir'], "best.pth")
+                fullname_best = os.path.join(self.cfg['save_dir'],self.cfg['label'], "best.pth")
                 torch.save(self.model.state_dict(), fullname_best)
 
-                fullname = os.path.join(self.cfg['save_dir'], save_name)
+                fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
                 torch.save(self.model.state_dict(), fullname)
                 with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
                     json.dump(fullname, f, ensure_ascii=False)
 
         else:
-            fullname = os.path.join(self.cfg['save_dir'], save_name)
+            fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
             torch.save(self.model.state_dict(), fullname)
 
             with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:

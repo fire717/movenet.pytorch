@@ -258,3 +258,10 @@ def arg_parser(cfg):
         cfg[key] = value
 
     return cfg
+
+def ensure_loc(path):
+    # TODO: add functionality for filenames as well.
+    if os.path.isdir(path):
+        return True
+    else:
+        os.makedirs(path)
