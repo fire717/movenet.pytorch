@@ -33,7 +33,7 @@ def main(cfg):
 
         run_task = Task(cfg, model)
         run_task.modelSave('e0_accu0.pth', is_best=True)
-        continue
+
         run_task.train(train_loader, val_loader)
         run_task.save_results()
 

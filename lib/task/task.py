@@ -630,6 +630,7 @@ class Task():
             self.early_stop += 0
 
     def save_results(self):
+        ensure_loc(self.cfg['results_path'])
         with open(os.path.join(self.cfg['results_path'], (self.cfg['label'] + '_log.txt')), 'a') as f:
             f.write(str(self.cfg))
             f.write('Best training accuracy:' + str(self.best_train_accuracy))
