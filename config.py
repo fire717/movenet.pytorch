@@ -3,10 +3,9 @@
 https://github.com/fire717
 """
 
-# dataset = "coco"
-dataset = "mpii"
-home = "/media/ggoyal/Data/data/"+dataset+"/"
-# home = "/work/ggoyal/Data/"+dataset+"/"
+dataset = "mpii_cropped"
+# home = "/media/ggoyal/Data/data/"+dataset+"/"
+home = "/work/ggoyal/data/"+dataset+"/"
 
 cfg = {
         ##### Global Setting
@@ -81,3 +80,15 @@ if dataset == "mpii":
     cfg["eval_label_path"] = "/home/ggoyal/data/mpii/anno/val.json"
     # cfg["eval_label_path"] =  home + 'cropped/val2017.json'
 
+if dataset == "mpii_cropped":
+    cfg["num_classes"] = 13
+    cfg["img_path"] = home + "tos_synthetic_export_cropped/"
+    cfg["separated_data"] = True
+    cfg["train_label_path"] = cfg["img_path"] + 'train.json'
+    cfg["val_label_path"] = cfg["img_path"] + 'val.json'
+
+    cfg["test_img_path"] = "/home/ggoyal/data/DHP19/dhp19_s1_2_4-cam3"
+    cfg["predict_output_path"] = "/home/ggoyal/data/DHP19/dhp19_s1_2_4-cam3-samples_pred"
+    cfg["exam_label_path"] = home + '/anno/val_2.json'
+    cfg["eval_img_path"] = home + '/tos_synthetic_export_cropped/'
+    cfg["eval_label_path"] = "/home/ggoyal/data/mpii/anno/val.json"
