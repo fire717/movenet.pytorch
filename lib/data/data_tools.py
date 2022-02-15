@@ -72,8 +72,7 @@ def label2heatmap(keypoints, other_keypoints, img_size):
     # print(heatmaps.shape, heatmaps_bg.shape)
 
     #heatmaps = np.concatenate([heatmaps,heatmaps_bg], axis=0)
-    # print(heatmaps.shape)
-    # b
+
     
     return heatmaps,sigma
 
@@ -134,7 +133,7 @@ def label2reg(keypoints, cx, cy, img_size):
                     heatmaps[i*2+1][j][k] = reg_y-(cy-j)#/(img_size//4)
                 else:
                     heatmaps[i*2+1][j][k] = reg_y+(cy-j)
-    # bb
+  
     return heatmaps
 
 def label2offset(keypoints, cx, cy, regs, img_size):
@@ -150,7 +149,7 @@ def label2offset(keypoints, cx, cy, regs, img_size):
 
 
         small_x = int(regs[i*2,cy,cx]+cx)
-        small_y = int(regs[i*2+1,cy,cx]+cx)
+        small_y = int(regs[i*2+1,cy,cx]+cy)
 
         
         offset_x = large_x/4-small_x
@@ -165,7 +164,7 @@ def label2offset(keypoints, cx, cy, regs, img_size):
         # print()
         heatmaps[i*2][small_y][small_x] = offset_x#/(img_size//4)
         heatmaps[i*2+1][small_y][small_x] = offset_y#/(img_size//4)
-    # b
+
     # print(heatmaps.shape)
     
     return heatmaps
@@ -240,8 +239,6 @@ def generate_heatmap1(x, y, other_keypoints, size, sigma):
 
 
     tops = [[x,y]]
-    
-
 
     for top in tops:
         x,y = top
@@ -259,7 +256,7 @@ def generate_heatmap1(x, y, other_keypoints, size, sigma):
     # print(heatmap[0:5,0:5])
     # heatmap = heatmap**5
     # print(heatmap[0:5,0:5])
-    # b
+
     return heatmap
 
 
@@ -336,7 +333,6 @@ class TensorDataset(Dataset):
         # print("----")
         # if '000000103797_0' in item["img_name"]:
         #     print(item)
-        # b
         """
         item = {
                      "img_name":save_name,
@@ -399,14 +395,13 @@ class TensorDataset(Dataset):
         # hm = cv2.resize(np.sum(heatmaps,axis=0)*255,(192,192))
         # cv2.imwrite(os.path.join("_hm.jpg"), hm)
         # cv2.imwrite(os.path.join("_img.jpg"), img)
-        # b
 
 
         cx = min(max(0,int(center[0]*self.img_size//4)),self.img_size//4-1)
         cy = min(max(0,int(center[1]*self.img_size//4)),self.img_size//4-1)
         # if '000000103797_0' in item["img_name"]:
         #     print("---data_tools 404 cx,cy: ",cx,cy, center)
-        # b
+
         centers = label2center(cx, cy, other_centers, self.img_size, sigma) #(1, 48, 48)
         # cv2.imwrite(os.path.join("_img.jpg"), centers[0]*255)
         #print(centers[0,21:26,21:26])
@@ -416,7 +411,7 @@ class TensorDataset(Dataset):
         
         # cx2,cy2 = extract_keypoints(centers)
 
-        # b
+
         # cx2,cy2 = maxPoint(centers)
         # cx2,cy2 = cx2[0][0],cy2[0][0]
         # print(cx2,cy2)
@@ -431,7 +426,7 @@ class TensorDataset(Dataset):
         # cv2.imwrite(os.path.join("_regs.jpg"), regs[0]*255)
         # print(regs[0][22:26,22:26])
         # print(regs[1][22:26,22:26])
-        # b
+
         # print("regs[0,cy,cx]: ", regs[0,cy,cx])
         # for i in range(14):
         #     print(regs[i,y,x])
@@ -439,9 +434,9 @@ class TensorDataset(Dataset):
         offsets = label2offset(keypoints, cx, cy, regs, self.img_size)#(14, 48, 48)
         # for i in range(14):
         #     print(regs[i,y,x])
-        # b
+
         # print(heatmaps.shape, regs.shape, offsets.shape)
-        # b
+
 
         # img = img.transpose((1,2,0))
         # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
