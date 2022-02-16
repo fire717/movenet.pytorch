@@ -328,6 +328,9 @@ class TensorDataset(Dataset):
 
     def __getitem__(self, index):
         item = self.data_labels[index]
+
+        if len(item['other_keypoints']) == 0:
+            item['other_keypoints'] = [[] for i in range(13)]
         # print(len(self.data_labels), index)
         # while 'yoga_img_514' not in item["img_name"]:
         #     index+=1
@@ -371,6 +374,8 @@ class TensorDataset(Dataset):
         center = item['center']
         other_centers = item["other_centers"]
         other_keypoints = item["other_keypoints"]
+
+
         # print(keypoints)
         # [0.640625   0.7760417  2, ] (21,)
         kps_mask = np.ones(len(keypoints) // 3)
