@@ -303,7 +303,7 @@ def get_headsize(head_size_scaled, img_size):
 
 def get_torso_diameter(keypoints):
     kps = np.reshape(keypoints,[-1,3])[:,:-1]
-    if len(keypoints) == 13:
+    if len(keypoints)//3 == 13:
         left_hip = kps[7,:]
         right_hip = kps[8,:]
         left_shoulder = kps[1,:]

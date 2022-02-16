@@ -59,8 +59,8 @@ def myAcc(output, target, th=0.5, num_classes = 13):
     return cate_acc
 
 
-def pck(output, target, torso_diameter, threshold=None, num_classes=13, mode='head'):
-    if threshold == None:
+def pck(output, target, limb_length, threshold=None, num_classes=13, mode='head'):
+    if threshold is None:
         if mode == 'head': # for MPII dataset
             threshold = 0.5
         elif mode == 'torso': # for H36M and DHP19
@@ -74,9 +74,9 @@ def pck(output, target, torso_diameter, threshold=None, num_classes=13, mode='he
         target = heatmap2locate(target)
 
     pck={}
-
+    # print(torso_diameter)
     # compute PCK's threshold as percentage of head size in pixels for each pose
-    thresholds_val = torso_diameter * threshold
+    thresholds_val = limb_length * threshold
 
     # compute euclidean distances between joints
     output = output.reshape((-1,num_classes,2))

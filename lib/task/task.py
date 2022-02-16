@@ -57,8 +57,6 @@ class Task():
         self.best_train_accuracy = 0
         self.best_val_accuracy = 0
 
-
-
     def train(self, train_loader, val_loader):
 
         for epoch in range(self.init_epoch, self.init_epoch + self.cfg['epochs']):
@@ -169,7 +167,8 @@ class Task():
         self.model.eval()
 
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
+                    data_loader):
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
                     exit()
@@ -271,7 +270,8 @@ class Task():
         joint_correct = np.zeros([self.cfg["num_classes"]])
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
+                    data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
@@ -410,7 +410,8 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             # acc = myAcc(pre, gt)
-            if torso_diameter[0]==0:
+
+            if torso_diameter[0] == 0:
                 pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
             else:
                 pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
@@ -601,16 +602,16 @@ class Task():
     def modelSave(self, save_name, is_best=False):
         if self.cfg['save_best_only']:
             if is_best:
-                fullname_best = os.path.join(self.cfg['save_dir'],self.cfg['label'], "best.pth")
+                fullname_best = os.path.join(self.cfg['save_dir'], self.cfg['label'], "best.pth")
                 torch.save(self.model.state_dict(), fullname_best)
 
-                fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
+                fullname = os.path.join(self.cfg['save_dir'], self.cfg['label'], save_name)
                 torch.save(self.model.state_dict(), fullname)
                 with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
                     json.dump(fullname, f, ensure_ascii=False)
 
         else:
-            fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
+            fullname = os.path.join(self.cfg['save_dir'], self.cfg['label'], save_name)
             torch.save(self.model.state_dict(), fullname)
 
             with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
