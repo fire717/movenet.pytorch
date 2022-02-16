@@ -301,6 +301,19 @@ def get_headsize(head_size_scaled, img_size):
     head_size = (head_size_scaled * float(img_size // 4))
     return head_size
 
+def get_torso_diameter(keypoints):
+    kps = np.reshape(keypoints,[-1,3])[:,:-1]
+    if len(keypoints) == 13:
+        left_hip = kps[7,:]
+        right_hip = kps[8,:]
+        left_shoulder = kps[1,:]
+        right_shoulder = kps[2,:]
+        hip_width = math.dist(left_hip,right_hip)
+        shoulder_width = math.dist(left_shoulder,right_shoulder)
+        torso_diameter = np.mean([hip_width,shoulder_width])
+        return torso_diameter
+    else:
+        return 0
 
 ######## dataloader
 class TensorDataset(Dataset):
@@ -423,11 +436,13 @@ class TensorDataset(Dataset):
         # print("labels: " + str(labels.shape))
         # print(heatmaps.shape,centers.shape,regs.shape,offsets.shape,labels.shape)
         # print(labels.shape)
-        head_size = get_headsize(head_size_scaled, self.img_size)
-        if head_size is None or head_size_scaled is None:
-            return img, labels, kps_mask, img_path
-        else:
-            return img, labels, kps_mask, img_path, head_size, head_size_scaled
+        # head_size = get_headsize(head_size_scaled, self.img_size)
+        torso_diameter = get_torso_diameter(keypoints)
+
+        # if head_size is None or head_size_scaled is None:
+        #     return img, labels, kps_mask, img_path
+        # else:
+        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled
 
     def __len__(self):
         return len(self.data_labels)

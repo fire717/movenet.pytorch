@@ -17,7 +17,7 @@ from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGrad
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
 # from lib.visualization.visualization import superimpose_pose
-from lib.utils.metrics import myAcc, pckh
+from lib.utils.metrics import myAcc, pck
 
 
 class Task():
@@ -169,7 +169,7 @@ class Task():
         self.model.eval()
 
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(data_loader):
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
                     exit()
@@ -196,13 +196,15 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                # n
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                if torso_diameter is None:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
+                else:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 # print(pck)
                 # print(correct,total)
 
-                correct_kps = pck["total_correct"]
-                total_kps = pck["total_keypoints"]
+                correct_kps = pck_acc["total_correct"]
+                total_kps = pck_acc["total_keypoints"]
                 # joint_correct += pck["correct_per_joint"]
                 # joint_total += pck["anno_keypoints_per_joint"]
 
@@ -242,7 +244,7 @@ class Task():
                         cv2.circle(img, (x, y), 3, (0, 0, 255), 2)  # predicted keypoints in red
 
                 img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
-                str = "acc: %.2f, head: %.2f " % (pck["total_correct"] / pck["total_keypoints"], head_size)
+                str = "acc: %.2f, head: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], head_size_norm)
                 cv2.putText(img2, str,
                             text_location,
                             font,
@@ -250,12 +252,12 @@ class Task():
                             fontColor,
                             thickness,
                             lineType)
-                cv2.line(img2, [10, 10], [10 + int(head_size * 2), 10], [0, 0, 255], 3)
+                cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
                 cv2.imwrite(save_name, img2)
                 # cv2.imshow("prediction",img)
                 # cv2.waitKey()
                 if basename == "025766192.jpg":
-                    print(pck)
+                    print(pck_acc)
                     print("prediction: ", pre)
                     print("gt: ", gt)
 
@@ -269,7 +271,7 @@ class Task():
         joint_correct = np.zeros([self.cfg["num_classes"]])
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
@@ -287,14 +289,17 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                if torso_diameter is None:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
+                else:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 # print(pck)
                 # print(correct,total)
 
-                correct_kps += pck["total_correct"]
-                total_kps += pck["total_keypoints"]
-                joint_correct += pck["correct_per_joint"]
-                joint_total += pck["anno_keypoints_per_joint"]
+                correct_kps += pck_acc["total_correct"]
+                total_kps += pck_acc["total_keypoints"]
+                joint_correct += pck_acc["correct_per_joint"]
+                joint_total += pck_acc["anno_keypoints_per_joint"]
 
         acc = correct_kps / total_kps
         acc_joint_mean = np.mean(joint_correct / joint_total)
@@ -363,7 +368,7 @@ class Task():
         right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(train_loader):
+        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(train_loader):
 
             # if '000000242610_0' not in img_names[0]:
             #     continue
@@ -405,13 +410,17 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             # acc = myAcc(pre, gt)
-            pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+            if torso_diameter[0]==0:
+                pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+            else:
+                pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
+
             # right_count += pck
             # total_count += labels.shape[0]
-            correct_kps += pck["total_correct"]
-            total_kps += pck["total_keypoints"]
-            joint_correct += pck["correct_per_joint"]
-            joint_total += pck["anno_keypoints_per_joint"]
+            correct_kps += pck_acc["total_correct"]
+            total_kps += pck_acc["total_keypoints"]
+            joint_correct += pck_acc["correct_per_joint"]
+            joint_total += pck_acc["anno_keypoints_per_joint"]
 
             if batch_idx % self.cfg['log_interval'] == 0:
                 acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
@@ -470,7 +479,7 @@ class Task():
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(val_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(val_loader):
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
@@ -495,13 +504,16 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 # acc = pckh(pre, gt)
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                if torso_diameter is None:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
+                else:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 # right_count += pck
                 # total_count += labels.shape[0]
-                correct_kps += pck["total_correct"]
-                total_kps += pck["total_keypoints"]
-                joint_correct += pck["correct_per_joint"]
-                joint_total += pck["anno_keypoints_per_joint"]
+                correct_kps += pck_acc["total_correct"]
+                total_kps += pck_acc["total_keypoints"]
+                joint_correct += pck_acc["correct_per_joint"]
+                joint_total += pck_acc["anno_keypoints_per_joint"]
                 acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
 
                 # right_count += sum(acc)
