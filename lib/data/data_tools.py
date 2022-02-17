@@ -317,7 +317,7 @@ def get_torso_diameter(keypoints):
 
 ######## dataloader
 class TensorDataset(Dataset):
-    def __init__(self, data_labels, img_dir, img_size, data_aug=None, num_classes=17):
+    def __init__(self, data_labels, img_dir, img_size, data_aug=None, num_classes=13):
         self.data_labels = data_labels
         self.img_dir = img_dir
         self.data_aug = data_aug

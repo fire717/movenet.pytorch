@@ -57,6 +57,8 @@ class Task():
         self.best_train_accuracy = 0
         self.best_val_accuracy = 0
 
+        ensure_loc(os.path.join(self.cfg['save_dir'], self.cfg['label']))
+
     def train(self, train_loader, val_loader):
 
         for epoch in range(self.init_epoch, self.init_epoch + self.cfg['epochs']):
@@ -411,7 +413,7 @@ class Task():
             # b
             # acc = myAcc(pre, gt)
 
-            if torso_diameter[0] == 0:
+            if self.cfg['dataset'] in ['coco', 'mpii']:
                 pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
             else:
                 pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
@@ -505,7 +507,7 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 # acc = pckh(pre, gt)
-                if sum(torso_diameter) == 0:
+                if self.cfg['dataset'] in ['coco', 'mpii']:
                     pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 else:
                     pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')

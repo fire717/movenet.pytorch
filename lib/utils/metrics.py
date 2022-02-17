@@ -76,12 +76,20 @@ def pck(output, target, limb_length, threshold=None, num_classes=13, mode='head'
     pck={}
     # print(torso_diameter)
     # compute PCK's threshold as percentage of head size in pixels for each pose
-    thresholds_val = limb_length * threshold
+
 
     # compute euclidean distances between joints
     output = output.reshape((-1,num_classes,2))
     target = target.reshape((-1,num_classes,2))
     distances = np.linalg.norm( output - target , axis=2)
+
+    try:
+        thresholds_val = limb_length * threshold
+    except TypeError:
+        print('The data type of the length of thresholding limb is incompatible:', type(limb_length))
+        print('All thresholds in the batch set to zero.')
+        thresholds_val = np.zeros([output.shape[0]])
+
 
     # compute correct keypoints
     th_head_expanded = thresholds_val.unsqueeze(1).expand(-1,distances.shape[1])
