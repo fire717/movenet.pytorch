@@ -539,6 +539,21 @@ def getDataLoader(mode, input_data, cfg):
 
         return val_loader
 
+    elif mode == "exam":
+
+        val_loader = torch.utils.data.DataLoader(
+            TensorDataset(input_data[0],
+                          cfg['exam_img_path'],
+                          cfg['img_size'],
+                          num_classes=cfg['num_classes']
+                          ),
+            batch_size=1,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=False)
+
+        return val_loader
+
     elif mode == "test":
 
         data_loader = torch.utils.data.DataLoader(

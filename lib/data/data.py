@@ -147,7 +147,7 @@ class Data():
         print("[INFO] Total images: ", len(data_label_list))
 
         input_data = [data_label_list]
-        data_loader = getDataLoader("val",
+        data_loader = getDataLoader("exam",
                                     input_data,
                                     self.cfg)
         return data_loader

@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 import json
+import time
 
 # import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
@@ -167,13 +168,14 @@ class Task():
 
     def exam(self, data_loader, save_dir):
         self.model.eval()
+        ensure_loc(save_dir)
 
         with torch.no_grad():
             for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
                     data_loader):
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
-                    exit()
+
                     print('Finish ', batch_idx)
                 # if 'mypc'  not in img_names[0]:
                 #     continue
@@ -197,10 +199,12 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                if torso_diameter is None:
-                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
-                else:
+                if self.cfg['dataset'] in ['coco', 'mpii']:
                     pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                    th_val = head_size_norm
+                else:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
+                    th_val = torso_diameter
                 # print(pck)
                 # print(correct,total)
 
@@ -238,14 +242,14 @@ class Task():
                     for i in range(len(gt[0]) // 2):
                         x = int(gt[0][i * 2] * w)
                         y = int(gt[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 5, (0, 255, 0), 3)  # gt keypoints in green
+                        cv2.circle(img, (x, y), 2, (0, 255, 0), 1)  # gt keypoints in green
 
                         x = int(pre[0][i * 2] * w)
                         y = int(pre[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 3, (0, 0, 255), 2)  # predicted keypoints in red
+                        cv2.circle(img, (x, y), 2, (0, 0, 255), 1)  # predicted keypoints in red
 
                 img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
-                str = "acc: %.2f, head: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], head_size_norm)
+                str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
                 cv2.putText(img2, str,
                             text_location,
                             font,
@@ -253,7 +257,7 @@ class Task():
                             fontColor,
                             thickness,
                             lineType)
-                cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
+                # cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
                 cv2.imwrite(save_name, img2)
                 # cv2.imshow("prediction",img)
                 # cv2.waitKey()
@@ -272,6 +276,7 @@ class Task():
         joint_correct = np.zeros([self.cfg["num_classes"]])
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
+            start = time.time()
             for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
                     data_loader):
 
@@ -280,7 +285,9 @@ class Task():
                     acc_intermediate = correct_kps / total_kps
                     acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
                     print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
-                    print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean_intermediate))
+                    print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
+                    # print('Time since beginning:', time.time()-start)
+                    print('[Info] Average Freq:', (batch_idx/ (time.time()-start)),'\n')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
@@ -292,9 +299,9 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 if torso_diameter is None:
-                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='head')
+                    pck_acc = pck(pre, gt,head_size_norm , num_classes=self.cfg["num_classes"], mode='head')
                 else:
-                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
                 # print(pck)
                 # print(correct,total)
 
