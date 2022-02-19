@@ -185,14 +185,14 @@ def extract_keypoints(heatmap):
     return x, y
 
 def arg_parser(cfg):
-    parser = argparse.ArgumentParser(prog="train")
+    parser = argparse.ArgumentParser()
     ##### Global Setting
     parser.add_argument('--GPU_ID', help='GPUs to use. Example: 0,1,2', default=cfg['GPU_ID'])
     parser.add_argument('--dataset', help='Training dataset.', default=cfg['dataset'],
                         choices=["mpii", "coco", 'h36m', 'dhp19'], type=str)
     parser.add_argument('--num_workers', help='Number of workers', default=cfg['num_workers'], type=int)
     parser.add_argument('--random_seed', help='Random seed', default=cfg['random_seed'], type=int)
-    parser.add_argument('--cfg_verbose', '-v', help='Verbosity', default=cfg['cfg_verbose'], type=bool)
+    parser.add_argument('--cfg_verbose', '-v', help='Verbosity', default=cfg['cfg_verbose'], type=str)
     parser.add_argument('--save_dir', help='Directory to save model checkpoints', default=cfg['save_dir'], type=str)
     parser.add_argument('--num_classes', help='Number of joints in the dataset', default=cfg['num_classes'], type=int)
     parser.add_argument('--img_size', help='Image size of the square image for training and output',
@@ -202,21 +202,21 @@ def arg_parser(cfg):
     ##### Train Setting
     parser.add_argument('--pre-separated_data',
                         help='Set true if the training and validation annotations are in separate files',
-                        default=cfg['pre-separated_data'], type=bool)
+                        default=cfg['pre-separated_data'], type=str)
     parser.add_argument('--training_data_split',
                         help='Percentage of data to use for training. Not used if pre-separated set to True',
                         default=cfg['training_data_split'], type=int)
     parser.add_argument('--newest_ckpt', help='File containing the name of the latest model checkpoints',
                         default=cfg['newest_ckpt'], type=str)
-    parser.add_argument('--balance_data', help='Set true for data balancing', default=cfg['balance_data'], type=bool)
+    parser.add_argument('--balance_data', help='Set true for data balancing', default=cfg['balance_data'], type=str)
     parser.add_argument('--log_interval', help='How frequently to log output', default=cfg['log_interval'], type=int)
     parser.add_argument('--save_best_only', help='Save only the best or improved model checkpoints',
-                        default=cfg['save_best_only'], type=bool)
+                        default=cfg['save_best_only'], type=str)
     parser.add_argument('--pin_memory', help='Pin memory', default=cfg['pin_memory'], type=bool)
     parser.add_argument('--th', help='Threshold value, in percentage of head size, for accuracy calculation',
                         default=cfg['th'], type=int)
     parser.add_argument('--from_scratch', help='Set true to begin training from scratch', default=cfg['from_scratch'],
-                        type=bool)
+                        type=str)
 
     ##### Train Hyperparameters
     parser.add_argument('--learning_rate', help='Initial learning rate of the training paradigm',
