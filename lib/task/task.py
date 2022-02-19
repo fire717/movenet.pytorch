@@ -602,7 +602,7 @@ class Task():
                 str1 = ''
             init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
             self.init_epoch = init_epoch
-            print(model_path)
+        print(model_path)
         self.model.load_state_dict(torch.load(model_path, map_location=self.device))
 
         if data_parallel:
