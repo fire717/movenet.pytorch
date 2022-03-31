@@ -261,10 +261,10 @@ class Task():
                 cv2.imwrite(save_name, img2)
                 # cv2.imshow("prediction",img)
                 # cv2.waitKey()
-                if basename == "025766192.jpg":
-                    print(pck_acc)
-                    print("prediction: ", pre)
-                    print("gt: ", gt)
+                # if basename == "025766192.jpg":
+                #     print(pck_acc)
+                #     print("prediction: ", pre)
+                #     print("gt: ", gt)
 
                     # bb
 
@@ -299,10 +299,10 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 if torso_diameter is None:
-                    pck_acc = pck(pre, gt,head_size_norm , num_classes=self.cfg["num_classes"], mode='head')
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 else:
-                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
-                # print(pck)
+                    pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"], mode='torso')
+                print(pre,gt)
                 # print(correct,total)
 
                 correct_kps += pck_acc["total_correct"]
@@ -321,43 +321,44 @@ class Task():
         correct = 0
         total = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(data_loader):
+            start = time.time()
+            for batch_idx, (imgs, labels, kps_mask, img_names,_,_) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0:
                     print('Finish ', batch_idx)
                 # if 'mypc'  not in img_names[0]:
                 #     continue
-
+                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
                 # print('-----------------')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
 
-                output = self.model(imgs).cpu().numpy()
+                output = (self.model(imgs))
                 # print(output)
                 # b
 
-                pre = []
-                for i in range(7):
-                    if output[i * 3 + 2] > 0.1:
-                        pre.extend([output[i * 3], output[i * 3 + 1]])
-                    else:
-                        pre.extend([-1, -1])
-                pre = np.array([pre])
+                # pre = []
+                # for i in range(7):
+                #     if output[i * 3 + 2] > 0.1:
+                #         pre.extend([output[i * 3], output[i * 3 + 1]])
+                #     else:
+                #         pre.extend([-1, -1])
+                # pre = np.array([pre])
 
-                # pre = movenetDecode(output, kps_mask,mode='output',num_joints=self.cfg["num_classes"])
-                gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
+                pre = movenetDecode(output, kps_mask,mode='output',num_joints=self.cfg["num_classes"])
+                # gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
                 # print(pre, gt)
                 # b
                 # n
-                acc = myAcc(pre, gt)
+                # acc = myAcc(pre, gt)
+                #
+                # correct += sum(acc)
+                # total += len(acc)
 
-                correct += sum(acc)
-                total += len(acc)
-
-        acc = correct / total
-        print('[Info] acc: {:.3f}% \n'.format(100. * acc))
+        # acc = correct / total
+        # print('[Info] acc: {:.3f}% \n'.format(100. * acc))
 
     ################
     def onTrainStep(self, train_loader, epoch):

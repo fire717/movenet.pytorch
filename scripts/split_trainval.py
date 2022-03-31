@@ -24,16 +24,17 @@ def fix_data(data):
             fixed_data.append(d)
         elif type(d) is list:
             fixed_data.extend(d)
-    print('files are concatenating correctly:',len(fixed_data))
+    print('files are concatenating correctly:', len(fixed_data))
     return fixed_data
 
-def file_exists_check(data,path):
+
+def file_exists_check(data, path):
     data_fixed = []
     for d in data:
-        file = os.path.join(path,d["img_name"])
+        file = os.path.join(path, d["img_name"])
         if os.path.exists(file):
             data_fixed.append(d)
-    print('files that exist:',len(data_fixed))
+    print('files that exist:', len(data_fixed))
     return data_fixed
 
 
@@ -63,22 +64,24 @@ def split(data, val_split=20, mode='ratio', val_subs=None):
     return data_train, data_val
 
 
-path = "/home/ggoyal/data/h36m/training/poses.json"
+path = "/home/ggoyal/data/h36m/training/poses_full_clean.json"
 # path = r"/home/ggoyal/data/h36m/training/poses.json"
 data = read_data(path)
-data = fix_data(data)
-img_path = '/home/ggoyal/data/h36m/training/h36m_EROS/'
-data = file_exists_check(data,img_path)
+# data = fix_data(data)
+# img_path = '/home/ggoyal/data/h36m/training/h36m_EROS/'
+# data = file_exists_check(data, img_path)
 
 subs = ['S9', 'S11']
 val_split = 20  # (percentage for validation)
-# data_train, data_val = split(data, val_split=20, mode='subject', val_subs=subs)
-data_train,data_val = split(data,val_split=20)
+data_train, data_val = split(data, mode='subject', val_subs=subs)
+# data_train, data_val = split(data, val_split=20)
 
+print(len(data), len(data_train), len(data_val))
+# with open("/home/ggoyal/data/h36m/training/poses_full_clean.json", 'w') as f:
+#     json.dump(data, f, ensure_ascii=False)
 
-print(len(data),len(data_train), len(data_val))
-with open("/home/ggoyal/data/h36m/training/train_half.json", 'w') as f:
+with open("/home/ggoyal/data/h36m/training/train_subject.json", 'w') as f:
     json.dump(data_train, f, ensure_ascii=False)
 
-with open("/home/ggoyal/data/h36m/training/val_half.json", 'w') as f:
+with open("/home/ggoyal/data/h36m/training/val_subject.json", 'w') as f:
     json.dump(data_val, f, ensure_ascii=False)
