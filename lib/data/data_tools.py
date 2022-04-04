@@ -358,6 +358,7 @@ class TensorDataset(Dataset):
         img_path = os.path.join(self.img_dir, item["img_name"])
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_size_original = img.shape[0:2]
         img = cv2.resize(img, (self.img_size, self.img_size),
                          interpolation=random.choice(self.interp_methods))
         #### Data Augmentation
@@ -447,7 +448,7 @@ class TensorDataset(Dataset):
         # if head_size is None or head_size_scaled is None:
         #     return img, labels, kps_mask, img_path
         # else:
-        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled
+        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled, img_size_original
 
     def __len__(self):
         return len(self.data_labels)

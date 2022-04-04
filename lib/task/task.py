@@ -14,10 +14,10 @@ import time
 # import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
+from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
-# from lib.visualization.visualization import superimpose_pose
+from lib.visualization.visualization import superimpose_pose
 from lib.utils.metrics import myAcc, pck
 
 
@@ -171,11 +171,11 @@ class Task():
         ensure_loc(save_dir)
 
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
+            for batch_idx, (
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
                     data_loader):
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
-
                     print('Finish ', batch_idx)
                 # if 'mypc'  not in img_names[0]:
                 #     continue
@@ -266,7 +266,7 @@ class Task():
                 #     print("prediction: ", pre)
                 #     print("gt: ", gt)
 
-                    # bb
+                # bb
 
     def evaluate(self, data_loader):
         self.model.eval()
@@ -277,7 +277,8 @@ class Task():
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
             start = time.time()
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(
+            for batch_idx, (
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
                     data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx > 10:
@@ -287,7 +288,7 @@ class Task():
                     print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
                     print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
                     # print('Time since beginning:', time.time()-start)
-                    print('[Info] Average Freq:', (batch_idx/ (time.time()-start)),'\n')
+                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
@@ -301,14 +302,27 @@ class Task():
                 if torso_diameter is None:
                     pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                 else:
-                    pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"], mode='torso')
-                print(pre,gt)
+                    pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"],
+                                  mode='torso')
+                # print(pre,gt)
                 # print(correct,total)
 
                 correct_kps += pck_acc["total_correct"]
                 total_kps += pck_acc["total_keypoints"]
                 joint_correct += pck_acc["correct_per_joint"]
                 joint_total += pck_acc["anno_keypoints_per_joint"]
+
+                print('gt', gt)
+                print('pre',pre)
+
+                _, pose_gt = restore_sizes(imgs[0], gt, (int(img_size_original[0]), int(img_size_original[1])))
+                img_out, pose_pre = restore_sizes(imgs[0], pre, (int(img_size_original[0]), int(img_size_original[1])))
+                print('gt after restore function', gt)
+                print('pre after restore function',pre)
+
+                superimpose_pose(img_out, pose_gt, tensors=False, filename='/home/ggoyal/data/h36m/tests/%s_gt.png' % img_names[0].split('/')[-1].split('.')[0])
+                superimpose_pose(img_out, pose_pre, tensors=False,
+                                 filename=('/media/Data/data/h36m/tests/%s_pre.png' % img_names[0].split('/')[-1].split('.')[0]))
 
         acc = correct_kps / total_kps
         acc_joint_mean = np.mean(joint_correct / joint_total)
@@ -322,12 +336,12 @@ class Task():
         total = 0
         with torch.no_grad():
             start = time.time()
-            for batch_idx, (imgs, labels, kps_mask, img_names,_,_) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, _, _) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0:
                     print('Finish ', batch_idx)
-                # if 'mypc'  not in img_names[0]:
-                #     continue
+                    # if 'mypc'  not in img_names[0]:
+                    #     continue
                     print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
                 # print('-----------------')
 
@@ -347,7 +361,7 @@ class Task():
                 #         pre.extend([-1, -1])
                 # pre = np.array([pre])
 
-                pre = movenetDecode(output, kps_mask,mode='output',num_joints=self.cfg["num_classes"])
+                pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 # gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
                 # print(pre, gt)
                 # b
@@ -378,7 +392,8 @@ class Task():
         right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(train_loader):
+        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _) in enumerate(
+                train_loader):
 
             # if '000000242610_0' not in img_names[0]:
             #     continue
@@ -490,7 +505,8 @@ class Task():
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm) in enumerate(val_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _) in enumerate(
+                    val_loader):
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
