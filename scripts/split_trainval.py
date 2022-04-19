@@ -38,7 +38,7 @@ def file_exists_check(data, path):
     return data_fixed
 
 
-def split(data, val_split=20, mode='ratio', val_subs=None):
+def split(data, val_split=20, mode='ratio', val_subs=None, val_cams=None):
     data_train = []
     data_val = []
     if mode == 'ratio':
@@ -54,7 +54,17 @@ def split(data, val_split=20, mode='ratio', val_subs=None):
     elif mode == 'subject':
 
         for d in data:
-            if d["img_name"].split('_')[0] in val_subs:
+            if d["img_name"].split('_')[1] in val_subs:
+                data_val.append(d)
+            else:
+                data_train.append(d)
+        random.shuffle(data_val)
+        random.shuffle(data_train)
+
+    elif mode == 'camera':
+
+        for d in data:
+            if d["img_name"].split('_')[0] in val_cams:
                 data_val.append(d)
             else:
                 data_train.append(d)
@@ -64,7 +74,8 @@ def split(data, val_split=20, mode='ratio', val_subs=None):
     return data_train, data_val
 
 
-path = "/home/ggoyal/data/h36m/training/poses_full_clean.json"
+### Read and pre-process the data
+path = "/home/ggoyal/data/h36m_cropped/poses.json"
 # path = r"/home/ggoyal/data/h36m/training/poses.json"
 data = read_data(path)
 # data = fix_data(data)
@@ -72,16 +83,22 @@ data = read_data(path)
 # data = file_exists_check(data, img_path)
 
 subs = ['S9', 'S11']
+cams = ['cam4']
 val_split = 20  # (percentage for validation)
+
+#### Splitting the data
+# data_train, data_val = split(data, mode='camera', val_cams=cams)
 data_train, data_val = split(data, mode='subject', val_subs=subs)
 # data_train, data_val = split(data, val_split=20)
 
+
+### Saving the final data
 print(len(data), len(data_train), len(data_val))
 # with open("/home/ggoyal/data/h36m/training/poses_full_clean.json", 'w') as f:
 #     json.dump(data, f, ensure_ascii=False)
 
-with open("/home/ggoyal/data/h36m/training/train_subject.json", 'w') as f:
+with open("/home/ggoyal/data/h36m_cropped/train_subject.json", 'w') as f:
     json.dump(data_train, f, ensure_ascii=False)
 
-with open("/home/ggoyal/data/h36m/training/val_subject.json", 'w') as f:
+with open("/home/ggoyal/data/h36m_cropped/val_subject.json", 'w') as f:
     json.dump(data_val, f, ensure_ascii=False)

@@ -5,7 +5,8 @@ https://github.com/fire717
 
 # dataset = "coco"
 # dataset = "mpii2"
-dataset = 'h36m'
+# dataset = 'h36m'
+dataset = 'h36m_cropped/half'
 # dataset = 'DHP19'
 home = "/media/Data/data/" + dataset + "/"
 # home = "/work/ggoyal/Data/"+dataset+"/"
@@ -102,6 +103,21 @@ if dataset == 'h36m':
     cfg["exam_output_path"] = home + "/exam/"
     cfg["eval_img_path"] = home + '/training/h36m_EROS/'
     cfg["eval_label_path"] = home + '/training/val_subject.json'
+
+if dataset == 'h36m_cropped/half':
+    cfg["num_classes"] = 13
+    cfg["img_path"] = home + "images/h36m_EROS"
+    cfg["separated_data"] = True
+    cfg["train_label_path"] = home + 'train_subject.json'
+    cfg["val_label_path"] = home + 'val_subject.json'
+
+    cfg["test_img_path"] = home + ''
+    cfg["predict_output_path"] = home + "predictions/"
+    cfg["exam_label_path"] = home + ''
+    cfg["exam_img_path"] = home + ''
+    cfg["exam_output_path"] = home + "examinations/"
+    cfg["eval_img_path"] = home + ''
+    cfg["eval_label_path"] = home + ''
 
 # samples_for_pred
 if dataset == 'DHP19':
