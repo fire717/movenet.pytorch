@@ -5,6 +5,7 @@ https://github.com/fire717
 
 import torch.optim as optim
 import numpy as np
+import cv2
 
 from lib.utils.utils import maxPoint, extract_keypoints
 
@@ -255,3 +256,17 @@ def movenetDecode(data, kps_mask=None, mode='output', num_joints=17,
         # print(res.shape)
         # b
     return res
+
+def restore_sizes(img_tensor,pose,size_out):
+    size_in = img_tensor.shape
+
+    # resize image
+    img = np.transpose(img_tensor.cpu().numpy(), axes=[1, 2, 0])
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    img_out = cv2.resize(img,(size_out[1],size_out[0]))
+    pose_out = np.copy(pose.reshape((-1,2)))
+    for i in range(len(pose_out)):
+        pose_out[i,0] = pose_out[i,0] * size_out[1]
+        pose_out[i,1] = pose_out[i,1] * size_out[0]
+
+    return img_out, pose_out
