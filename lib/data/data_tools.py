@@ -368,6 +368,8 @@ class TensorDataset(Dataset):
         #### Data Augmentation
         # print(item)
         if self.data_aug is not None:
+            item['other_centers'] = item.get('other_centers', [])
+            item['other_keypoints'] = item.get("other_keypoints", [[] for i in range(self.num_classes)])
             img, item = self.data_aug(img, item)
         # print(item)
         # cv2.imwrite(os.path.join("img.jpg"), img)
