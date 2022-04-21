@@ -187,6 +187,7 @@ def extract_keypoints(heatmap):
 def arg_parser(cfg):
     parser = argparse.ArgumentParser()
     ##### Global Setting
+    parser.add_argument('--no_early_stop', help='No early stop if overfitting.', action='store_true')
     parser.add_argument('--GPU_ID', help='GPUs to use. Example: 0,1,2', default=cfg['GPU_ID'])
     parser.add_argument('--dataset', help='Training dataset.', default=cfg['dataset'],
                         choices=["mpii", "coco", 'h36m', 'dhp19'], type=str)

@@ -45,7 +45,8 @@ class Task():
                                       self.cfg['weight_decay'])
 
         self.val_losses = np.zeros([20])
-        self.early_stop = 0
+        self.early_stop = not(cfg.get('no_early_stop',True))
+        self.early_stop_counter = 0
         self.val_loss_best = np.Inf
 
         # scheduler
@@ -65,8 +66,9 @@ class Task():
         for epoch in range(self.init_epoch, self.init_epoch + self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
             self.onValidation(val_loader, epoch)
-            if self.early_stop > 10:
-                break
+            if self.early_stop:
+                if self.early_stop_counter > 10:
+                    break
 
         self.onTrainEnd()
 
@@ -664,9 +666,9 @@ class Task():
         strip_old = losses[:l]
         strip_new = losses[l:]
         if np.mean(strip_old) <= np.mean(strip_new):
-            self.early_stop += 1
+            self.early_stop_counter += 1
         else:
-            self.early_stop += 0
+            self.early_stop_counter += 0
 
     def save_results(self):
         ensure_loc(self.cfg['results_path'])
