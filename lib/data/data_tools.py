@@ -1,13 +1,14 @@
 """
 @Fire
 https://github.com/fire717
-"""
+""" 
 from PIL import Image
 import numpy as np
 import pandas as pd
 import os
 import torch
 from torch.utils.data.dataset import Dataset
+
 
 import random
 import cv2
@@ -28,22 +29,20 @@ def getFileNames(file_dir, tail_list=['.png', '.jpg', '.JPG', '.PNG']):
                 L.append(os.path.join(root, file))
     return L
 
-
 def label2heatmap(keypoints, other_keypoints, img_size):
-    # keypoints: target person
-    # other_keypoints: other people's keypoints need to be add to the heatmap
+    #keypoints: target person
+    #other_keypoints: other people's keypoints need to be add to the heatmap
     heatmaps = []
-    # print(len(keypoints))
+    # print(keypoints)
 
-    keypoints_range = np.reshape(keypoints, (-1, 3))
-    keypoints_range = keypoints_range[keypoints_range[:, 2] > 0]
+    keypoints_range = np.reshape(keypoints,(-1,3))
+    keypoints_range = keypoints_range[keypoints_range[:,2]>0]
     # print(keypoints_range)
-
-    min_x = np.min(keypoints_range[:, 0])
-    min_y = np.min(keypoints_range[:, 1])
-    max_x = np.max(keypoints_range[:, 0])
-    max_y = np.max(keypoints_range[:, 1])
-    area = (max_y - min_y) * (max_x - min_x)
+    min_x = np.min(keypoints_range[:,0])
+    min_y = np.min(keypoints_range[:,1])
+    max_x = np.max(keypoints_range[:,0])
+    max_y = np.max(keypoints_range[:,1])
+    area = (max_y-min_y)*(max_x-min_x)
     sigma = 3
     if area < 0.16:
         sigma = 3
@@ -94,7 +93,6 @@ def label2center(cx, cy, other_centers, img_size, sigma):
 
     return heatmaps
 
-
 def label2reg(keypoints, cx, cy, img_size):
     # cx = int(center[0]*img_size/4)
     # cy = int(center[1]*img_size/4)
@@ -131,10 +129,9 @@ def label2reg(keypoints, cx, cy, img_size):
                 if cy < img_size // 4 / 2 - 1:
                     heatmaps[i * 2 + 1][j][k] = reg_y - (cy - j)  # /(img_size//4)
                 else:
-                    heatmaps[i * 2 + 1][j][k] = reg_y + (cy - j)
-    # bb
+                    heatmaps[i*2+1][j][k] = reg_y+(cy-j)
+  
     return heatmaps
-
 
 def label2offset(keypoints, cx, cy, regs, img_size):
     heatmaps = np.zeros((len(keypoints) // 3 * 2, img_size // 4, img_size // 4), dtype=np.float32)
@@ -147,18 +144,20 @@ def label2offset(keypoints, cx, cy, regs, img_size):
         large_x = int(keypoints[i * 3] * img_size)
         large_y = int(keypoints[i * 3 + 1] * img_size)
 
-        small_x = int(regs[i * 2, cy, cx] + cx)
-        small_y = int(regs[i * 2 + 1, cy, cx] + cx)
 
-        offset_x = large_x / 4 - small_x
-        offset_y = large_y / 4 - small_y
+        small_x = int(regs[i*2,cy,cx]+cx)
+        small_y = int(regs[i*2+1,cy,cx]+cy)
 
-        if small_x == img_size // 4: small_x = (img_size // 4 - 1)
-        if small_y == img_size // 4: small_y = (img_size // 4 - 1)
-        if small_x > img_size // 4 or small_x < 0 or small_y > img_size // 4 or small_y < 0:
+        
+        offset_x = large_x/4-small_x
+        offset_y = large_y/4-small_y
+
+        if small_x==img_size//4:small_x=(img_size//4-1)
+        if small_y==img_size//4:small_y=(img_size//4-1)
+        if small_x>img_size//4 or small_x<0 or small_y>img_size//4 or small_y<0:
             continue
         # print(offset_x, offset_y)
-
+        
         # print()
         heatmaps[i * 2][small_y][small_x] = offset_x  # /(img_size//4)
         heatmaps[i * 2 + 1][small_y][small_x] = offset_y  # /(img_size//4)
@@ -218,7 +217,6 @@ def gaussian2D(shape, sigma=1):
     h = np.exp(-(x * x + y * y) / (2 * sigma * sigma))
     h[h < np.finfo(h.dtype).eps * h.max()] = 0
     return h
-
 
 def generate_heatmap1(x, y, other_keypoints, size, sigma):
     # heatmap, center, radius, k=1
