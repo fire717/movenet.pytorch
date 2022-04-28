@@ -374,6 +374,9 @@ class TensorDataset(Dataset):
             if self.data_aug is not None:
                 item['other_centers'] = item.get('other_centers', [])
                 item['other_keypoints'] = item.get("other_keypoints", [[] for i in range(self.num_classes)])
+                if item['other_keypoints'] == []:
+                    item['other_keypoints'] = [[] for i in range(self.num_classes)]
+                print(item['other_keypoints'] )
                 img, item = self.data_aug(img, item)
             # print(item)
             # cv2.imwrite(os.path.join("img.jpg"), img)
@@ -390,8 +393,8 @@ class TensorDataset(Dataset):
         # Normalize inputs
         keypoints = normalize_keypoints(img_size_original, keypoints)
         center = normalize_center(img_size_original, center)
-        print(keypoints)
-        print(center)
+        # print(keypoints)
+        # print(center)
 
 
         if len(other_keypoints) == 0:
