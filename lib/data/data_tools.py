@@ -376,7 +376,6 @@ class TensorDataset(Dataset):
                 item['other_keypoints'] = item.get("other_keypoints", [[] for i in range(self.num_classes)])
                 if item['other_keypoints'] == []:
                     item['other_keypoints'] = [[] for i in range(self.num_classes)]
-                print(item['other_keypoints'] )
                 img, item = self.data_aug(img, item)
             # print(item)
             # cv2.imwrite(os.path.join("img.jpg"), img)
