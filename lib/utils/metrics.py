@@ -59,23 +59,40 @@ def myAcc(output, target, th=0.5, num_classes = 13):
     return cate_acc
 
 
-def pckh(output, target, head_sizes, threshold=0.1,num_classes = 13):
+def pck(output, target, limb_length, threshold=None, num_classes=13, mode='head'):
+    if threshold is None:
+        if mode == 'head': # for MPII dataset
+            threshold = 0.5
+        elif mode == 'torso': # for H36M and DHP19
+            threshold = 0.2
+        else:
+            print("Invalid accuracy model")
+            return None
+
     if len(output.shape) == 4:
         output = heatmap2locate(output)
         target = heatmap2locate(target)
 
     pck={}
-
+    # print(torso_diameter)
     # compute PCK's threshold as percentage of head size in pixels for each pose
-    thresholds_head = head_sizes * threshold
+
 
     # compute euclidean distances between joints
     output = output.reshape((-1,num_classes,2))
     target = target.reshape((-1,num_classes,2))
     distances = np.linalg.norm( output - target , axis=2)
 
+    try:
+        thresholds_val = limb_length * threshold
+    except TypeError:
+        print('The data type of the length of thresholding limb is incompatible:', type(limb_length))
+        print('All thresholds in the batch set to zero.')
+        thresholds_val = np.zeros([output.shape[0]])
+
+
     # compute correct keypoints
-    th_head_expanded = thresholds_head.unsqueeze(1).expand(-1,distances.shape[1])
+    th_head_expanded = thresholds_val.unsqueeze(1).expand(-1,distances.shape[1])
     correct_keypoints = (distances <= th_head_expanded.numpy()).astype(int)
 
     # remove not annotated keypoints from pck computation

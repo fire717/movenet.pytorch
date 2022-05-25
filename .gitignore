@@ -4,6 +4,7 @@ __pycache__
 *.log
 *.bak
 *.onnx
+*.pyc
 
 /lib/__pycache__
 /data/annotations

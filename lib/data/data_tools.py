@@ -1,14 +1,13 @@
 """
 @Fire
 https://github.com/fire717
-""" 
+"""
 from PIL import Image
 import numpy as np
 import pandas as pd
 import os
 import torch
 from torch.utils.data.dataset import Dataset
-
 
 import random
 import cv2
@@ -29,20 +28,21 @@ def getFileNames(file_dir, tail_list=['.png', '.jpg', '.JPG', '.PNG']):
                 L.append(os.path.join(root, file))
     return L
 
+
 def label2heatmap(keypoints, other_keypoints, img_size):
-    #keypoints: target person
-    #other_keypoints: other people's keypoints need to be add to the heatmap
+    # keypoints: target person
+    # other_keypoints: other people's keypoints need to be add to the heatmap
     heatmaps = []
     # print(keypoints)
 
-    keypoints_range = np.reshape(keypoints,(-1,3))
-    keypoints_range = keypoints_range[keypoints_range[:,2]>0]
+    keypoints_range = np.reshape(keypoints, (-1, 3))
+    keypoints_range = keypoints_range[keypoints_range[:, 2] > 0]
     # print(keypoints_range)
-    min_x = np.min(keypoints_range[:,0])
-    min_y = np.min(keypoints_range[:,1])
-    max_x = np.max(keypoints_range[:,0])
-    max_y = np.max(keypoints_range[:,1])
-    area = (max_y-min_y)*(max_x-min_x)
+    min_x = np.min(keypoints_range[:, 0])
+    min_y = np.min(keypoints_range[:, 1])
+    max_x = np.max(keypoints_range[:, 0])
+    max_y = np.max(keypoints_range[:, 1])
+    area = (max_y - min_y) * (max_x - min_x)
     sigma = 3
     if area < 0.16:
         sigma = 3
@@ -93,6 +93,7 @@ def label2center(cx, cy, other_centers, img_size, sigma):
 
     return heatmaps
 
+
 def label2reg(keypoints, cx, cy, img_size):
     # cx = int(center[0]*img_size/4)
     # cy = int(center[1]*img_size/4)
@@ -129,9 +130,10 @@ def label2reg(keypoints, cx, cy, img_size):
                 if cy < img_size // 4 / 2 - 1:
                     heatmaps[i * 2 + 1][j][k] = reg_y - (cy - j)  # /(img_size//4)
                 else:
-                    heatmaps[i*2+1][j][k] = reg_y+(cy-j)
-  
+                    heatmaps[i * 2 + 1][j][k] = reg_y + (cy - j)
+
     return heatmaps
+
 
 def label2offset(keypoints, cx, cy, regs, img_size):
     heatmaps = np.zeros((len(keypoints) // 3 * 2, img_size // 4, img_size // 4), dtype=np.float32)
@@ -144,20 +146,18 @@ def label2offset(keypoints, cx, cy, regs, img_size):
         large_x = int(keypoints[i * 3] * img_size)
         large_y = int(keypoints[i * 3 + 1] * img_size)
 
+        small_x = int(regs[i * 2, cy, cx] + cx)
+        small_y = int(regs[i * 2 + 1, cy, cx] + cy)
 
-        small_x = int(regs[i*2,cy,cx]+cx)
-        small_y = int(regs[i*2+1,cy,cx]+cy)
+        offset_x = large_x / 4 - small_x
+        offset_y = large_y / 4 - small_y
 
-        
-        offset_x = large_x/4-small_x
-        offset_y = large_y/4-small_y
-
-        if small_x==img_size//4:small_x=(img_size//4-1)
-        if small_y==img_size//4:small_y=(img_size//4-1)
-        if small_x>img_size//4 or small_x<0 or small_y>img_size//4 or small_y<0:
+        if small_x == img_size // 4: small_x = (img_size // 4 - 1)
+        if small_y == img_size // 4: small_y = (img_size // 4 - 1)
+        if small_x > img_size // 4 or small_x < 0 or small_y > img_size // 4 or small_y < 0:
             continue
         # print(offset_x, offset_y)
-        
+
         # print()
         heatmaps[i * 2][small_y][small_x] = offset_x  # /(img_size//4)
         heatmaps[i * 2 + 1][small_y][small_x] = offset_y  # /(img_size//4)
@@ -217,6 +217,7 @@ def gaussian2D(shape, sigma=1):
     h = np.exp(-(x * x + y * y) / (2 * sigma * sigma))
     h[h < np.finfo(h.dtype).eps * h.max()] = 0
     return h
+
 
 def generate_heatmap1(x, y, other_keypoints, size, sigma):
     # heatmap, center, radius, k=1
@@ -300,9 +301,36 @@ def get_headsize(head_size_scaled, img_size):
     return head_size
 
 
+def get_torso_diameter(keypoints):
+    # This parameter is defined as the mean diagonal length of the torso.
+    kps = np.reshape(keypoints, [-1, 3])[:, :-1]
+    if len(keypoints) // 3 == 13:
+        left_hip = kps[7, :]
+        right_hip = kps[8, :]
+        left_shoulder = kps[1, :]
+        right_shoulder = kps[2, :]
+        hip_width = math.dist(left_hip, right_shoulder)
+        shoulder_width = math.dist(left_shoulder, right_hip)
+        torso_diameter = np.mean([hip_width, shoulder_width])
+        return torso_diameter
+    else:
+        return 0
+
+
+def normalize_keypoints(image_size, keypoints):
+    new_keypoints = np.copy(keypoints)
+
+    return new_keypoints
+
+def normalize_center(image_size, center):
+    new_center = np.copy(center)
+
+    return new_center
+
+
 ######## dataloader
 class TensorDataset(Dataset):
-    def __init__(self, data_labels, img_dir, img_size, data_aug=None, num_classes=17):
+    def __init__(self, data_labels, img_dir, img_size, data_aug=None, num_classes=13):
         self.data_labels = data_labels
         self.img_dir = img_dir
         self.data_aug = data_aug
@@ -313,49 +341,63 @@ class TensorDataset(Dataset):
 
     def __getitem__(self, index):
         item = self.data_labels[index]
-        # print(len(self.data_labels), index)
-        # while 'yoga_img_514' not in item["img_name"]:
-        #     index+=1
-        #     item = self.data_labels[index]
-        # while len(item['other_centers'])==0:
-        #     index+=1
-        #     item = self.data_labels[index]
-        # print("----")
-        # if '000000103797_0' in item["img_name"]:
-        #     print(item)
-        # b
         """
         item = {
-                     "img_name":save_name,
-                     "head_size":head_size,
-                     "head_size_scaled":head_size_scaled,
-                     "keypoints":save_keypoints,
-                     "center":save_center,
-                     "other_centers":other_centers,
-                     "other_keypoints":other_keypoints,
-                    }
+                 "img_name":save_name,
+                 'ts': timestanp
+                 "head_size":head_size, (optional)
+                 "head_size_scaled":head_size_scaled, (optional)
+                 "keypoints":save_keypoints,
+                 "center":save_center,
+                 "other_centers":other_centers, (optional)
+                 "other_keypoints":other_keypoints, (optional)
+           }
         """
         # label_str_list = label_str.strip().split(',')
         # [name,h,w,keypoints...]
+
+        dev = False
+
         img_path = os.path.join(self.img_dir, item["img_name"])
-        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (self.img_size, self.img_size),
-                         interpolation=random.choice(self.interp_methods))
+        if not dev:
+            img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img_size_original = img.shape[0:2]
+            img = cv2.resize(img, (self.img_size, self.img_size),
+                             interpolation=random.choice(self.interp_methods))
+
+        else:
+            img_size_original = [640,480,3]
+
         #### Data Augmentation
-        # print(item)
-        if self.data_aug is not None:
-            img, item = self.data_aug(img, item)
-        # print(item)
-        # cv2.imwrite(os.path.join("img.jpg"), img)
-        img = img.astype(np.float32)
-        img = np.transpose(img, axes=[2, 0, 1])
-        # head_size = item.get("head_size", None)
-        head_size_scaled = item.get("head_size_scaled", None)
-        keypoints = item["keypoints"]
-        center = item['center']
-        other_centers = item["other_centers"]
-        other_keypoints = item["other_keypoints"]
+        if not dev:
+            if self.data_aug is not None:
+                item['other_centers'] = item.get('other_centers', [])
+                item['other_keypoints'] = item.get("other_keypoints", [[] for i in range(self.num_classes)])
+                if item['other_keypoints'] == []:
+                    item['other_keypoints'] = [[] for i in range(self.num_classes)]
+                img, item = self.data_aug(img, item)
+            # print(item)
+            # cv2.imwrite(os.path.join("img.jpg"), img)
+            img = img.astype(np.float32)
+            img = np.transpose(img, axes=[2, 0, 1])
+        head_size = item.get("head_size", 0)
+        head_size_scaled = item.get("head_size_scaled", 0)
+        keypoints = item.get("keypoints", [[] for i in range(self.num_classes)])
+        center = item.get("center", [])
+        other_centers = item.get("other_centers", [])
+        other_keypoints = item.get("other_keypoints", [[] for i in range(self.num_classes)])
+        ts = item.get('ts', 0)
+
+        # Normalize inputs
+        keypoints = normalize_keypoints(img_size_original, keypoints)
+        center = normalize_center(img_size_original, center)
+        # print(keypoints)
+        # print(center)
+
+
+        if len(other_keypoints) == 0:
+            other_keypoints = [[] for i in range(self.num_classes)]
         # print(keypoints)
         # [0.640625   0.7760417  2, ] (21,)
         kps_mask = np.ones(len(keypoints) // 3)
@@ -421,11 +463,13 @@ class TensorDataset(Dataset):
         # print("labels: " + str(labels.shape))
         # print(heatmaps.shape,centers.shape,regs.shape,offsets.shape,labels.shape)
         # print(labels.shape)
-        head_size = get_headsize(head_size_scaled, self.img_size)
-        if head_size is None or head_size_scaled is None:
-            return img, labels, kps_mask, img_path
-        else:
-            return img, labels, kps_mask, img_path, head_size, head_size_scaled
+        # head_size = get_headsize(head_size_scaled, self.img_size)
+        torso_diameter = get_torso_diameter(keypoints)
+
+        # if head_size is None or head_size_scaled is None:
+        #     return img, labels, kps_mask, img_path
+        # else:
+        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled, img_size_original
 
     def __len__(self):
         return len(self.data_labels)
@@ -507,6 +551,21 @@ def getDataLoader(mode, input_data, cfg):
         val_loader = torch.utils.data.DataLoader(
             TensorDataset(input_data[0],
                           cfg['eval_img_path'],
+                          cfg['img_size'],
+                          num_classes=cfg['num_classes']
+                          ),
+            batch_size=1,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=False)
+
+        return val_loader
+
+    elif mode == "exam":
+
+        val_loader = torch.utils.data.DataLoader(
+            TensorDataset(input_data[0],
+                          cfg['exam_img_path'],
                           cfg['img_size'],
                           num_classes=cfg['num_classes']
                           ),

@@ -9,15 +9,16 @@ import numpy as np
 import cv2
 from pathlib import Path
 import json
+import time
 
 # import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient
+from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
-# from lib.visualization.visualization import superimpose_pose
-from lib.utils.metrics import myAcc, pckh
+from lib.visualization.visualization import superimpose_pose
+from lib.utils.metrics import myAcc, pck
 
 
 class Task():
@@ -44,7 +45,8 @@ class Task():
                                       self.cfg['weight_decay'])
 
         self.val_losses = np.zeros([20])
-        self.early_stop = 0
+        self.early_stop = not(cfg.get('no_early_stop',True))
+        self.early_stop_counter = 0
         self.val_loss_best = np.Inf
 
         # scheduler
@@ -57,15 +59,16 @@ class Task():
         self.best_train_accuracy = 0
         self.best_val_accuracy = 0
 
-
+        ensure_loc(os.path.join(self.cfg['save_dir'], self.cfg['label']))
 
     def train(self, train_loader, val_loader):
 
         for epoch in range(self.init_epoch, self.init_epoch + self.cfg['epochs']):
             self.onTrainStep(train_loader, epoch)
             self.onValidation(val_loader, epoch)
-            if self.early_stop > 10:
-                break
+            if self.early_stop:
+                if self.early_stop_counter > 10:
+                    break
 
         self.onTrainEnd()
 
@@ -167,12 +170,14 @@ class Task():
 
     def exam(self, data_loader, save_dir):
         self.model.eval()
+        ensure_loc(save_dir)
 
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(data_loader):
+            for batch_idx, (
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+                    data_loader):
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
-                    exit()
                     print('Finish ', batch_idx)
                 # if 'mypc'  not in img_names[0]:
                 #     continue
@@ -196,13 +201,17 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                # n
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                if self.cfg['dataset'] in ['coco', 'mpii']:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                    th_val = head_size_norm
+                else:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
+                    th_val = torso_diameter
                 # print(pck)
                 # print(correct,total)
 
-                correct_kps = pck["total_correct"]
-                total_kps = pck["total_keypoints"]
+                correct_kps = pck_acc["total_correct"]
+                total_kps = pck_acc["total_keypoints"]
                 # joint_correct += pck["correct_per_joint"]
                 # joint_total += pck["anno_keypoints_per_joint"]
 
@@ -235,14 +244,14 @@ class Task():
                     for i in range(len(gt[0]) // 2):
                         x = int(gt[0][i * 2] * w)
                         y = int(gt[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 5, (0, 255, 0), 3)  # gt keypoints in green
+                        cv2.circle(img, (x, y), 2, (0, 255, 0), 1)  # gt keypoints in green
 
                         x = int(pre[0][i * 2] * w)
                         y = int(pre[0][i * 2 + 1] * h)
-                        cv2.circle(img, (x, y), 3, (0, 0, 255), 2)  # predicted keypoints in red
+                        cv2.circle(img, (x, y), 2, (0, 0, 255), 1)  # predicted keypoints in red
 
                 img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
-                str = "acc: %.2f, head: %.2f " % (pck["total_correct"] / pck["total_keypoints"], head_size)
+                str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
                 cv2.putText(img2, str,
                             text_location,
                             font,
@@ -250,16 +259,16 @@ class Task():
                             fontColor,
                             thickness,
                             lineType)
-                cv2.line(img2, [10, 10], [10 + int(head_size * 2), 10], [0, 0, 255], 3)
+                # cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
                 cv2.imwrite(save_name, img2)
                 # cv2.imshow("prediction",img)
                 # cv2.waitKey()
-                if basename == "025766192.jpg":
-                    print(pck)
-                    print("prediction: ", pre)
-                    print("gt: ", gt)
+                # if basename == "025766192.jpg":
+                #     print(pck_acc)
+                #     print("prediction: ", pre)
+                #     print("gt: ", gt)
 
-                    # bb
+                # bb
 
     def evaluate(self, data_loader):
         self.model.eval()
@@ -269,14 +278,19 @@ class Task():
         joint_correct = np.zeros([self.cfg["num_classes"]])
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(data_loader):
+            start = time.time()
+            for batch_idx, (
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+                    data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
                     acc_intermediate = correct_kps / total_kps
                     acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
                     print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
-                    print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean_intermediate))
+                    print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
+                    # print('Time since beginning:', time.time()-start)
+                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
@@ -287,14 +301,30 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
-                # print(pck)
+                if torso_diameter is None:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                else:
+                    pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"],
+                                  mode='torso')
+                # print(pre,gt)
                 # print(correct,total)
 
-                correct_kps += pck["total_correct"]
-                total_kps += pck["total_keypoints"]
-                joint_correct += pck["correct_per_joint"]
-                joint_total += pck["anno_keypoints_per_joint"]
+                correct_kps += pck_acc["total_correct"]
+                total_kps += pck_acc["total_keypoints"]
+                joint_correct += pck_acc["correct_per_joint"]
+                joint_total += pck_acc["anno_keypoints_per_joint"]
+
+                print('gt', gt)
+                print('pre',pre)
+
+                _, pose_gt = restore_sizes(imgs[0], gt, (int(img_size_original[0]), int(img_size_original[1])))
+                img_out, pose_pre = restore_sizes(imgs[0], pre, (int(img_size_original[0]), int(img_size_original[1])))
+                print('gt after restore function', gt)
+                print('pre after restore function',pre)
+
+                superimpose_pose(img_out, pose_gt, tensors=False, filename='/home/ggoyal/data/h36m/tests/%s_gt.png' % img_names[0].split('/')[-1].split('.')[0])
+                superimpose_pose(img_out, pose_pre, tensors=False,
+                                 filename=('/media/Data/data/h36m/tests/%s_pre.png' % img_names[0].split('/')[-1].split('.')[0]))
 
         acc = correct_kps / total_kps
         acc_joint_mean = np.mean(joint_correct / joint_total)
@@ -307,43 +337,44 @@ class Task():
         correct = 0
         total = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names) in enumerate(data_loader):
+            start = time.time()
+            for batch_idx, (imgs, labels, kps_mask, img_names, _, _) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0:
                     print('Finish ', batch_idx)
-                # if 'mypc'  not in img_names[0]:
-                #     continue
-
+                    # if 'mypc'  not in img_names[0]:
+                    #     continue
+                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
                 # print('-----------------')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
 
-                output = self.model(imgs).cpu().numpy()
+                output = (self.model(imgs))
                 # print(output)
                 # b
 
-                pre = []
-                for i in range(7):
-                    if output[i * 3 + 2] > 0.1:
-                        pre.extend([output[i * 3], output[i * 3 + 1]])
-                    else:
-                        pre.extend([-1, -1])
-                pre = np.array([pre])
+                # pre = []
+                # for i in range(7):
+                #     if output[i * 3 + 2] > 0.1:
+                #         pre.extend([output[i * 3], output[i * 3 + 1]])
+                #     else:
+                #         pre.extend([-1, -1])
+                # pre = np.array([pre])
 
-                # pre = movenetDecode(output, kps_mask,mode='output',num_joints=self.cfg["num_classes"])
-                gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
+                pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
+                # gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
                 # print(pre, gt)
                 # b
                 # n
-                acc = myAcc(pre, gt)
+                # acc = myAcc(pre, gt)
+                #
+                # correct += sum(acc)
+                # total += len(acc)
 
-                correct += sum(acc)
-                total += len(acc)
-
-        acc = correct / total
-        print('[Info] acc: {:.3f}% \n'.format(100. * acc))
+        # acc = correct / total
+        # print('[Info] acc: {:.3f}% \n'.format(100. * acc))
 
     ################
     def onTrainStep(self, train_loader, epoch):
@@ -363,7 +394,8 @@ class Task():
         right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(train_loader):
+        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _) in enumerate(
+                train_loader):
 
             # if '000000242610_0' not in img_names[0]:
             #     continue
@@ -405,13 +437,18 @@ class Task():
             # print(pre.shape, gt.shape)
             # b
             # acc = myAcc(pre, gt)
-            pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+
+            if self.cfg['dataset'] in ['coco', 'mpii']:
+                pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+            else:
+                pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
+
             # right_count += pck
             # total_count += labels.shape[0]
-            correct_kps += pck["total_correct"]
-            total_kps += pck["total_keypoints"]
-            joint_correct += pck["correct_per_joint"]
-            joint_total += pck["anno_keypoints_per_joint"]
+            correct_kps += pck_acc["total_correct"]
+            total_kps += pck_acc["total_keypoints"]
+            joint_correct += pck_acc["correct_per_joint"]
+            joint_total += pck_acc["anno_keypoints_per_joint"]
 
             if batch_idx % self.cfg['log_interval'] == 0:
                 acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
@@ -470,7 +507,8 @@ class Task():
         right_count = np.array([0] * self.cfg['num_classes'], dtype=np.int64)
         total_count = 0
         with torch.no_grad():
-            for batch_idx, (imgs, labels, kps_mask, img_names, head_size, head_size_norm) in enumerate(val_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _) in enumerate(
+                    val_loader):
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
                 kps_mask = kps_mask.to(self.device)
@@ -495,13 +533,16 @@ class Task():
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
                 # acc = pckh(pre, gt)
-                pck = pckh(pre, gt, head_size_norm, self.cfg["th"] / 100, self.cfg["num_classes"])
+                if self.cfg['dataset'] in ['coco', 'mpii']:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                else:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
                 # right_count += pck
                 # total_count += labels.shape[0]
-                correct_kps += pck["total_correct"]
-                total_kps += pck["total_keypoints"]
-                joint_correct += pck["correct_per_joint"]
-                joint_total += pck["anno_keypoints_per_joint"]
+                correct_kps += pck_acc["total_correct"]
+                total_kps += pck_acc["total_keypoints"]
+                joint_correct += pck_acc["correct_per_joint"]
+                joint_total += pck_acc["anno_keypoints_per_joint"]
                 acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
 
                 # right_count += sum(acc)
@@ -580,7 +621,7 @@ class Task():
                 str1 = ''
             init_epoch = int(str1.join(os.path.basename(model_path).split('_')[0][1:]))
             self.init_epoch = init_epoch
-            print(model_path)
+        print(model_path)
         self.model.load_state_dict(torch.load(model_path, map_location=self.device))
 
         if data_parallel:
@@ -589,16 +630,16 @@ class Task():
     def modelSave(self, save_name, is_best=False):
         if self.cfg['save_best_only']:
             if is_best:
-                fullname_best = os.path.join(self.cfg['save_dir'],self.cfg['label'], "best.pth")
+                fullname_best = os.path.join(self.cfg['save_dir'], self.cfg['label'], "best.pth")
                 torch.save(self.model.state_dict(), fullname_best)
 
-                fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
+                fullname = os.path.join(self.cfg['save_dir'], self.cfg['label'], save_name)
                 torch.save(self.model.state_dict(), fullname)
                 with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
                     json.dump(fullname, f, ensure_ascii=False)
 
         else:
-            fullname = os.path.join(self.cfg['save_dir'],self.cfg['label'], save_name)
+            fullname = os.path.join(self.cfg['save_dir'], self.cfg['label'], save_name)
             torch.save(self.model.state_dict(), fullname)
 
             with open(Path(self.cfg['newest_ckpt']).resolve(), 'w') as f:
@@ -625,11 +666,12 @@ class Task():
         strip_old = losses[:l]
         strip_new = losses[l:]
         if np.mean(strip_old) <= np.mean(strip_new):
-            self.early_stop += 1
+            self.early_stop_counter += 1
         else:
-            self.early_stop += 0
+            self.early_stop_counter += 0
 
     def save_results(self):
+        ensure_loc(self.cfg['results_path'])
         with open(os.path.join(self.cfg['results_path'], (self.cfg['label'] + '_log.txt')), 'a') as f:
             f.write(str(self.cfg))
             f.write('Best training accuracy:' + str(self.best_train_accuracy))

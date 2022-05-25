@@ -94,6 +94,7 @@ class Data():
                 val_label_list = json.loads(f.readlines()[0])
         else:
             with open(self.cfg['train_label_path'], 'r') as f:
+                print("Data being split randomly. Experiment may not be replicable.")
                 complete_label_list = json.loads(f.readlines()[0])
                 train_size = int(self.cfg['training_data_split'] / 100 * len(complete_label_list))
                 test_size = len(complete_label_list) - train_size
@@ -146,7 +147,7 @@ class Data():
         print("[INFO] Total images: ", len(data_label_list))
 
         input_data = [data_label_list]
-        data_loader = getDataLoader("val",
+        data_loader = getDataLoader("exam",
                                     input_data,
                                     self.cfg)
         return data_loader
