@@ -27,6 +27,13 @@ def fix_data(data):
     print('files are concatenating correctly:', len(fixed_data))
     return fixed_data
 
+def pick_by_name(data,name):
+    data_out = []
+    for d in data:
+        if name in d["img_name"]:
+            data_out.append(d)
+            print(d['img_name'])
+    return data_out
 
 def file_exists_check(data, path):
     data_fixed = []
@@ -85,6 +92,12 @@ data = read_data(path)
 subs = ['S9', 'S11']
 cams = ['cam4']
 val_split = 20  # (percentage for validation)
+# name = 'cam2_S9_Directions'
+#
+# data_out = pick_by_name(data,name)
+# with open(f"/home/ggoyal/data/h36m_cropped/poses_{name}.json", 'w') as f:
+#     json.dump(data_out, f, ensure_ascii=False)
+
 
 #### Splitting the data
 # data_train, data_val = split(data, mode='camera', val_cams=cams)
