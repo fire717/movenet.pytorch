@@ -9,6 +9,61 @@ import numpy as np
 import json
 
 
+DHP19_TO_MOVENET_INDICES = np.array([
+
+    [0, 0],  # head
+    [1, 2],  # lshoulder
+    [2, 1],  # rshoulder
+    [3, 4],  # lelbow
+    [4, 3],  # relbow
+    [5, 8],  # lwrist
+    [6, 7],  # rwrist
+    [7, 5],  # lhip
+    [8, 6],  # rhip
+    [9, 10],  # lknee
+    [10, 9],  # rknee
+    [11, 12],  # lankle
+    [12, 11]  # rankle
+])
+hpecore_kps_labels = {'head': 0,
+    'shoulderR': 1,
+    'shoulderL': 2,
+    'elbowR': 3,
+    'elbowL': 4,
+    'hipL': 5,
+    'hipR': 6,
+    'handR': 7,
+    'handL': 8,
+    'kneeR': 9,
+    'kneeL': 10,
+    'footR': 11,
+    'footL': 12
+    }
+lines_in_skeleton = [
+    ['shoulderR','elbowR'],
+    ['elbowR','handR'],
+    ['shoulderL','elbowL'],
+    ['elbowL','handL'],
+    ['shoulderR','shoulderL'],
+    ['shoulderR','hipR'],
+    ['shoulderL','hipL'],
+    ['hipR','hipL'],
+    ['hipR', 'kneeR'],
+    ['kneeR', 'footR'],
+    ['hipL','kneeL'],
+    ['kneeL','footL'],
+]
+
+MOVENET_TO_DHP19_INDICES = DHP19_TO_MOVENET_INDICES[np.argsort(DHP19_TO_MOVENET_INDICES[:,1]),:]
+def movenet_to_hpecore(pose):
+    return pose[MOVENET_TO_DHP19_INDICES[:, 0],:]
+
+def get_kps_names_hpecore(kps):
+    kps_out = {}
+    for key,value in hpecore_kps_labels.items():
+        kps_out[key] = np.array(kps[value,:])
+    return kps_out
+
 def superimpose_pose(img_in, pose, num_classes=13, tensors=True, filename=None):
     """ inputs:
             img: rgb image of any size
@@ -42,6 +97,29 @@ def superimpose_pose(img_in, pose, num_classes=13, tensors=True, filename=None):
 
     cv2.imshow('a', img)
     cv2.waitKey(500)
+
+def add_skeleton(img,keypoints,color, lines = None):
+
+    h, w = img.shape[:2]
+    for i in range(len(keypoints[0]) // 2):
+        x = int(keypoints[0][i * 2] * w)
+        y = int(keypoints[0][i * 2 + 1] * h)
+        cv2.circle(img, (x, y), 2, color, 1)
+    if lines is not None:
+        kps_2d = np.reshape(keypoints, [-1, 2])
+        kps_hpecore = movenet_to_hpecore(kps_2d)
+        kps_dict = get_kps_names_hpecore(kps_hpecore)
+        for [jointa,jointb] in lines_in_skeleton:
+            # print('kps_dict[jointa]', kps_dict[jointa][0])
+            x1 = int(kps_dict[jointa][0] * w)
+            y1 =  int(kps_dict[jointa][1] * h)
+            x2 = int(kps_dict[jointb][0] * w)
+            y2 =  int(kps_dict[jointb][1] * h)
+
+            cv2.line(img,(x1,y1),(x2,y2),color,thickness=1)
+    return img
+
+
 
 # if __name__ == "__main__":
 #     file_img = '/home/ggoyal/data/mpii/tos_synthetic_export/000041029.jpg'

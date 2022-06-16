@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
-from lib.visualization.visualization import superimpose_pose
+from lib.visualization.visualization import superimpose_pose, add_skeleton
 from lib.utils.metrics import myAcc, pck
 
 
@@ -176,6 +176,8 @@ class Task():
             for batch_idx, (
             imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
                     data_loader):
+                if img_size_original == 0:
+                    continue
 
                 if batch_idx % 50 == 0 and batch_idx > 0:
                     print('Finish ', batch_idx)
@@ -201,7 +203,7 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                if self.cfg['dataset'] in ['coco', 'mpii']:
+                if self.cfg['dataset'] in ['coco', 'mpii','mpii2']:
                     pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
                     th_val = head_size_norm
                 else:
@@ -251,24 +253,19 @@ class Task():
                         cv2.circle(img, (x, y), 2, (0, 0, 255), 1)  # predicted keypoints in red
 
                 img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
-                str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
-                cv2.putText(img2, str,
-                            text_location,
-                            font,
-                            fontScale,
-                            fontColor,
-                            thickness,
-                            lineType)
-                # cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
-                cv2.imwrite(save_name, img2)
-                # cv2.imshow("prediction",img)
-                # cv2.waitKey()
-                # if basename == "025766192.jpg":
-                #     print(pck_acc)
-                #     print("prediction: ", pre)
-                #     print("gt: ", gt)
 
-                # bb
+                if self.cfg['dataset'] != 'DHP19':
+                    str = "acc: %.2f" % (pck_acc["total_correct"] / pck_acc["total_keypoints"])
+                    # str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
+                    cv2.putText(img2, str,
+                                text_location,
+                                font,
+                                fontScale,
+                                fontColor,
+                                thickness,
+                                lineType)
+                cv2.imwrite(save_name, img2)
+
 
     def evaluate(self, data_loader):
         self.model.eval()
@@ -375,6 +372,98 @@ class Task():
 
         # acc = correct / total
         # print('[Info] acc: {:.3f}% \n'.format(100. * acc))
+
+    def infer_video(self, data_loader, video_path):
+        self.model.eval()
+
+        correct_kps = 0.0
+        total_kps = 0.0
+        joint_correct = np.zeros([self.cfg["num_classes"]])
+        joint_total = np.zeros([self.cfg["num_classes"]])
+        size = self.cfg["img_size"]
+        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 50, (size * 2, size * 2))
+
+        text_location = (10, size * 2 - 10)  # bottom left corner of the image
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = 0.8
+        fontColor = (0, 0, 255)
+        thickness = 1
+        lineType = 2
+
+        with torch.no_grad():
+            start = time.time()
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+                    data_loader):
+
+                if batch_idx % 100 == 0 and batch_idx > 10:
+                    print('Finished samples: ', batch_idx)
+                    acc_intermediate = correct_kps / total_kps
+                    acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
+                    # print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
+                    print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
+                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
+
+
+                labels = labels.to(self.device)
+                imgs = imgs.to(self.device)
+                kps_mask = kps_mask.to(self.device)
+
+                output = self.model(imgs)
+
+                pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
+                gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
+
+                if self.cfg['dataset'] in ['coco', 'mpii']:
+                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                    th_val = head_size_norm
+                else:
+                    pck_acc = pck(pre, gt, torso_diameter, num_classes=self.cfg["num_classes"], mode='torso')
+                    th_val = torso_diameter
+
+                correct_kps += pck_acc["total_correct"]
+                total_kps += pck_acc["total_keypoints"]
+                joint_correct += pck_acc["correct_per_joint"]
+                joint_total += pck_acc["anno_keypoints_per_joint"]
+
+                img = np.transpose(imgs[0].cpu().numpy(), axes=[1, 2, 0])
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                h, w = img.shape[:2]
+
+                for i in range(len(gt[0]) // 2):
+                    img = add_skeleton(img, gt, (0, 255, 0),lines=1)
+                    img = add_skeleton(img, pre, (0, 0, 255),lines=1)
+                    # x = int(gt[0][i * 2] * w)
+                    # y = int(gt[0][i * 2 + 1] * h)
+                    # cv2.circle(img, (x, y), 2, (0, 255, 0), 1)  # gt keypoints in green
+
+                    # x = int(pre[0][i * 2] * w)
+                    # y = int(pre[0][i * 2 + 1] * h)
+                    # cv2.circle(img, (x, y), 2, (0, 0, 255), 1)  # predicted keypoints in red
+
+                img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
+                # str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
+                # cv2.putText(img2, str,
+                #             text_location,
+                #             font,
+                #             fontScale,
+                #             fontColor,
+                #             thickness,
+                #             lineType)
+                # cv2.line(img2, [10, 10], [10 + int(head_size_norm * 2), 10], [0, 0, 255], 3)
+
+                # basename = os.path.basename(img_names[0])
+                # ensure_loc('eval_result')
+                # cv2.imwrite(os.path.join('eval_result', basename), img)
+                img2 = np.uint8(img2)
+                # cv2.imshow("prediction", img2)
+                # cv2.waitKey(1)
+                out.write(img2)
+
+        acc = correct_kps / total_kps
+        acc_joint_mean = np.mean(joint_correct / joint_total)
+        print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc))
+        print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean))
+        out.release()
 
     ################
     def onTrainStep(self, train_loader, epoch):
