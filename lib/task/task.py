@@ -10,6 +10,7 @@ import cv2
 from pathlib import Path
 import json
 import time
+import csv
 
 # import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
@@ -17,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
-from lib.visualization.visualization import superimpose_pose, add_skeleton
+from lib.visualization.visualization import superimpose_pose, add_skeleton, movenet_to_hpecore
 from lib.utils.metrics import myAcc, pck
 
 
@@ -174,7 +175,7 @@ class Task():
 
         with torch.no_grad():
             for batch_idx, (
-            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(
                     data_loader):
                 if img_size_original == 0:
                     continue
@@ -277,7 +278,7 @@ class Task():
         with torch.no_grad():
             start = time.time()
             for batch_idx, (
-            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(
                     data_loader):
 
                 if batch_idx % 100 == 0 and batch_idx > 10:
@@ -335,7 +336,7 @@ class Task():
         total = 0
         with torch.no_grad():
             start = time.time()
-            for batch_idx, (imgs, labels, kps_mask, img_names, _, _) in enumerate(data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, _, _, _) in enumerate(data_loader):
 
                 if batch_idx % 100 == 0:
                     print('Finish ', batch_idx)
@@ -392,9 +393,15 @@ class Task():
 
         with torch.no_grad():
             start = time.time()
-            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original) in enumerate(
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original,ts) in enumerate(
                     data_loader):
-
+                #### For a single sample inference.
+                # sample_name = img_names[0].split('_')[:-1]
+                # if batch_idx == 0:
+                #     primary_sample = sample_name
+                # else:
+                #     if sample_name != primary_sample:
+                #         break
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
                     acc_intermediate = correct_kps / total_kps
@@ -465,6 +472,32 @@ class Task():
         print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean))
         out.release()
 
+
+    def save_video(self, data_loader, video_path):
+        self.model.eval()
+
+        size = self.cfg["img_size"]
+        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 50, (size * 2, size * 2))
+        with torch.no_grad():
+            start = time.time()
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(
+                    data_loader):
+                sample_name = img_names[0].split('_')[:-1]
+                if batch_idx == 0:
+                    primary_sample = sample_name
+                else:
+                    if sample_name != primary_sample:
+                        break
+
+                if batch_idx % 100 == 0 and batch_idx > 10:
+                    print('Finished samples: ', batch_idx)
+
+                img = np.transpose(imgs[0].cpu().numpy(), axes=[1, 2, 0])
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
+                img2 = np.uint8(img2)
+                out.write(img2)
+        out.release()
     ################
     def onTrainStep(self, train_loader, epoch):
 
@@ -483,7 +516,7 @@ class Task():
         right_count = np.array([0] * self.cfg['batch_size'], dtype=np.float64)
         total_count = 0
 
-        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _) in enumerate(
+        for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, _, _) in enumerate(
                 train_loader):
 
             # if '000000242610_0' not in img_names[0]:

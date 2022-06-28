@@ -25,7 +25,8 @@ def main(cfg):
     run_task.modelLoad('/home/ggoyal/data/h36m_cropped/runs/e48_valacc0.81777.pth')
 
     # run_task.evaluate(data_loader)
-    run_task.infer_video(data_loader,'/home/ggoyal/data/DHP19/tester/out_50hz.avi')
+    # run_task.save_video(data_loader,'/home/ggoyal/data/h36m_cropped/tester/input_sample.avi')
+    run_task.infer_video(data_loader,'/home/ggoyal/data/h36m_cropped/tester/h36m_new_out_50Hz.avi')
 
 
 if __name__ == '__main__':
