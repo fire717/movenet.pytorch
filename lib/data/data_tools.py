@@ -471,7 +471,8 @@ class TensorDataset(Dataset):
         # if head_size is None or head_size_scaled is None:
         #     return img, labels, kps_mask, img_path
         # else:
-        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled, img_size_original
+
+        return img, labels, kps_mask, img_path, torso_diameter, head_size_scaled, img_size_original, ts
 
     def __len__(self):
         return len(self.data_labels)
