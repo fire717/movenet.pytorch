@@ -280,7 +280,7 @@ class Task():
             for batch_idx, (
             imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(
                     data_loader):
-
+                start_sample = time.time()
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
                     acc_intermediate = correct_kps / total_kps
@@ -312,17 +312,25 @@ class Task():
                 joint_correct += pck_acc["correct_per_joint"]
                 joint_total += pck_acc["anno_keypoints_per_joint"]
 
-                print('gt', gt)
-                print('pre',pre)
+                # print('gt', gt)
+                # print('pre',pre)
 
                 _, pose_gt = restore_sizes(imgs[0], gt, (int(img_size_original[0]), int(img_size_original[1])))
                 img_out, pose_pre = restore_sizes(imgs[0], pre, (int(img_size_original[0]), int(img_size_original[1])))
-                print('gt after restore function', gt)
-                print('pre after restore function',pre)
+                # print('gt after restore function', pose_gt)
+                # print('pre after restore function',pose_pre)
 
-                superimpose_pose(img_out, pose_gt, tensors=False, filename='/home/ggoyal/data/h36m/tests/%s_gt.png' % img_names[0].split('/')[-1].split('.')[0])
-                superimpose_pose(img_out, pose_pre, tensors=False,
-                                 filename=('/media/Data/data/h36m/tests/%s_pre.png' % img_names[0].split('/')[-1].split('.')[0]))
+                kps_2d = np.reshape(pose_pre, [-1, 2])
+                kps_hpecore = movenet_to_hpecore(kps_2d)
+                kps_pre_hpecore = np.reshape(kps_hpecore, [-1])
+                row = self.create_row(ts,kps_pre_hpecore, delay = time.time()-start_sample)
+                sample = '_'.join(os.path.basename(img_names[0]).split('_')[:-1])
+                write_path = os.path.join(self.cfg['results_path'],self.cfg['dataset'],sample,'movenet.csv')
+                ensure_loc(os.path.dirname(write_path))
+                self.write_results(write_path, row)
+                # superimpose_pose(img_out, pose_gt, tensors=False, filename='/home/ggoyal/data/h36m/tests/%s_gt.png' % img_names[0].split('/')[-1].split('.')[0])
+                # superimpose_pose(img_out, pose_pre, tensors=False,
+                #                  filename=('/media/Data/data/h36m/tests/%s_pre.png' % img_names[0].split('/')[-1].split('.')[0]))
 
         acc = correct_kps / total_kps
         acc_joint_mean = np.mean(joint_correct / joint_total)
@@ -798,3 +806,17 @@ class Task():
             f.write(str(self.cfg))
             f.write('Best training accuracy:' + str(self.best_train_accuracy))
             f.write('Best validation accuracy:' + str(self.best_val_accuracy))
+
+    def write_results(self, path, row):
+        # Write a data point into a csvfile
+        with open(path, 'a') as f:
+            writer = csv.writer(f, delimiter=' ')
+            writer.writerow(row)
+
+    def create_row(self, ts, skt, delay = 0.0):
+        # Function to create a row to be written into a csv file.
+        row = []
+        ts = float(ts)
+        row.extend([ts, delay])
+        row.extend(skt)
+        return row
