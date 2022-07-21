@@ -11,8 +11,8 @@ from lib.utils.utils import arg_parser
 def main(cfg):
     init(cfg)
 
-    cfg["eval_img_path"] =  '/home/ggoyal/data/h36m_cropped/eros_samples'
-    cfg["eval_label_path"] =  '/home/ggoyal/data/h36m_cropped/eros_samples/poses.json'
+    # cfg["eval_img_path"] =  '/home/ggoyal/data/h36m_cropped/eros_samples'
+    # cfg["eval_label_path"] =  '/home/ggoyal/data/h36m_cropped/eros_samples/poses.json'
     model = MoveNet(num_classes=cfg["num_classes"],
                     width_mult=cfg["width_mult"],
                     mode='train')

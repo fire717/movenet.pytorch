@@ -270,3 +270,27 @@ def restore_sizes(img_tensor,pose,size_out):
         pose_out[i,1] = pose_out[i,1] * size_out[0]
 
     return img_out, pose_out
+def superimpose(base_image,heatmap):
+
+    # Ensure the sizes match.
+    shape_base = base_image.shape
+    shape_heatmap = heatmap.shape
+
+    heatmap = cv2.resize(heatmap,[shape_base[0],shape_base[1]])
+    heatmap = cv2.merge([heatmap, heatmap, heatmap])
+    heatmap = heatmap*255
+    heatmap = heatmap.astype(np.uint8)
+    # base_image = base_image*255
+    base_image = base_image.astype(np.uint8)
+    # import matplotlib.pyplot as plt
+    # vec = np.reshape(base_image,[1,-1]).squeeze()
+    # print(vec.shape)
+    # plt.hist(vec, bins=256)
+    # plt.interactive(False)
+    # plt.show(block=False)
+    # plt.pause(.3)
+    # plt.close()
+    heatmap = cv2.cvtColor(heatmap, cv2.COLOR_RGB2BGR)
+    heatmap= cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+    fin = cv2.addWeighted(heatmap, 0.5, base_image, 0.5, 0)
+    return fin

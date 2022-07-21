@@ -359,10 +359,13 @@ class TensorDataset(Dataset):
         dev = False
 
         img_path = os.path.join(self.img_dir, item["img_name"])
+
+
         if not dev:
             img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+            # if image is not found
             if img is None:
-                return 0, 0, 0, 0, 0, 0, 0
+                return 0, 0, 0, 0, 0, 0, 0, 0
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img_size_original = img.shape[0:2]
             img = cv2.resize(img, (self.img_size, self.img_size),

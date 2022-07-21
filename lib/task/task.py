@@ -15,7 +15,7 @@ import csv
 # import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes
+from lib.task.task_tools import getSchedu, getOptimizer, movenetDecode, clipGradient, restore_sizes,superimpose
 from lib.loss.movenet_loss import MovenetLoss
 from lib.utils.utils import printDash, ensure_loc
 from lib.visualization.visualization import superimpose_pose, add_skeleton, movenet_to_hpecore
@@ -268,7 +268,7 @@ class Task():
                 cv2.imwrite(save_name, img2)
 
 
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader,fastmode=False):
         self.model.eval()
 
         correct_kps = 0.0
@@ -277,18 +277,20 @@ class Task():
         joint_total = np.zeros([self.cfg["num_classes"]])
         with torch.no_grad():
             start = time.time()
-            for batch_idx, (
-            imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(
-                    data_loader):
+            for batch_idx, (imgs, labels, kps_mask, img_names, torso_diameter, head_size_norm, img_size_original, ts) in enumerate(data_loader):
+                if img_size_original == 0:
+                    continue
+
                 start_sample = time.time()
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
-                    acc_intermediate = correct_kps / total_kps
-                    acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
-                    print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
-                    print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
-                    # print('Time since beginning:', time.time()-start)
-                    print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
+                    if not fastmode:
+                        acc_intermediate = correct_kps / total_kps
+                        acc_joint_mean_intermediate = np.mean(joint_correct / joint_total)
+                        print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc_intermediate))
+                        print('[Info] Mean Joint Acc: {:.3f}%'.format(100. * acc_joint_mean_intermediate))
+                        # print('Time since beginning:', time.time()-start)
+                        print('[Info] Average Freq:', (batch_idx / (time.time() - start)), '\n')
 
                 labels = labels.to(self.device)
                 imgs = imgs.to(self.device)
@@ -299,43 +301,44 @@ class Task():
                 pre = movenetDecode(output, kps_mask, mode='output', num_joints=self.cfg["num_classes"])
                 gt = movenetDecode(labels, kps_mask, mode='label', num_joints=self.cfg["num_classes"])
 
-                if torso_diameter is None:
-                    pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
-                else:
-                    pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"],
-                                  mode='torso')
+                if not fastmode:
+                    if torso_diameter is None:
+                        pck_acc = pck(pre, gt, head_size_norm, num_classes=self.cfg["num_classes"], mode='head')
+                    else:
+                        pck_acc = pck(pre, gt, torso_diameter, threshold=0.5, num_classes=self.cfg["num_classes"],
+                                      mode='torso')
                 # print(pre,gt)
                 # print(correct,total)
 
-                correct_kps += pck_acc["total_correct"]
-                total_kps += pck_acc["total_keypoints"]
-                joint_correct += pck_acc["correct_per_joint"]
-                joint_total += pck_acc["anno_keypoints_per_joint"]
+                if not fastmode:
+                    correct_kps += pck_acc["total_correct"]
+                    total_kps += pck_acc["total_keypoints"]
+                    joint_correct += pck_acc["correct_per_joint"]
+                    joint_total += pck_acc["anno_keypoints_per_joint"]
 
-                # print('gt', gt)
-                # print('pre',pre)
+                    img_out, pose_gt = restore_sizes(imgs[0], gt, (int(img_size_original[0]), int(img_size_original[1])))
+                    # print('gt after restore function', pose_gt)
 
-                _, pose_gt = restore_sizes(imgs[0], gt, (int(img_size_original[0]), int(img_size_original[1])))
-                img_out, pose_pre = restore_sizes(imgs[0], pre, (int(img_size_original[0]), int(img_size_original[1])))
-                # print('gt after restore function', pose_gt)
+                _, pose_pre = restore_sizes(imgs[0], pre, (int(img_size_original[0]), int(img_size_original[1])))
                 # print('pre after restore function',pose_pre)
 
                 kps_2d = np.reshape(pose_pre, [-1, 2])
                 kps_hpecore = movenet_to_hpecore(kps_2d)
                 kps_pre_hpecore = np.reshape(kps_hpecore, [-1])
-                row = self.create_row(ts,kps_pre_hpecore, delay = time.time()-start_sample)
+                row = self.create_row(ts,kps_pre_hpecore, delay=time.time()-start_sample)
                 sample = '_'.join(os.path.basename(img_names[0]).split('_')[:-1])
-                write_path = os.path.join(self.cfg['results_path'],self.cfg['dataset'],sample,'movenet.csv')
+                write_path = os.path.join(self.cfg['results_path'],self.cfg['dataset'],sample,'movenet_cam2.csv')
                 ensure_loc(os.path.dirname(write_path))
                 self.write_results(write_path, row)
                 # superimpose_pose(img_out, pose_gt, tensors=False, filename='/home/ggoyal/data/h36m/tests/%s_gt.png' % img_names[0].split('/')[-1].split('.')[0])
                 # superimpose_pose(img_out, pose_pre, tensors=False,
                 #                  filename=('/media/Data/data/h36m/tests/%s_pre.png' % img_names[0].split('/')[-1].split('.')[0]))
 
-        acc = correct_kps / total_kps
-        acc_joint_mean = np.mean(joint_correct / joint_total)
-        print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc))
-        print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean))
+        if not fastmode:
+            acc = correct_kps / total_kps
+            acc_joint_mean = np.mean(joint_correct / joint_total)
+            print('[Info] Mean Keypoint Acc: {:.3f}%'.format(100. * acc))
+            print('[Info] Mean Joint Acc: {:.3f}% \n'.format(100. * acc_joint_mean))
 
     def evaluateTest(self, data_loader):
         self.model.eval()
@@ -407,9 +410,9 @@ class Task():
                 # sample_name = img_names[0].split('_')[:-1]
                 # if batch_idx == 0:
                 #     primary_sample = sample_name
-                # else:
-                #     if sample_name != primary_sample:
-                #         break
+                # elif sample_name != primary_sample:
+                #     break
+
                 if batch_idx % 100 == 0 and batch_idx > 10:
                     print('Finished samples: ', batch_idx)
                     acc_intermediate = correct_kps / total_kps
@@ -443,9 +446,10 @@ class Task():
                 img = np.transpose(imgs[0].cpu().numpy(), axes=[1, 2, 0])
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
                 h, w = img.shape[:2]
-
+                img = img*3
+                img[img>255] = 255
                 for i in range(len(gt[0]) // 2):
-                    img = add_skeleton(img, gt, (0, 255, 0),lines=1)
+                    # img = add_skeleton(img, gt, (0, 255, 0),lines=1)
                     img = add_skeleton(img, pre, (0, 0, 255),lines=1)
                     # x = int(gt[0][i * 2] * w)
                     # y = int(gt[0][i * 2 + 1] * h)
@@ -454,6 +458,12 @@ class Task():
                     # x = int(pre[0][i * 2] * w)
                     # y = int(pre[0][i * 2 + 1] * h)
                     # cv2.circle(img, (x, y), 2, (0, 0, 255), 1)  # predicted keypoints in red
+                # # Show center heatmaps
+                # centers = output[1].cpu().numpy()[0]
+                # from lib.utils.utils import maxPoint
+                # cx, cy = maxPoint(centers)
+                # # instant['center'] = np.array([cx[0][0], cy[0][0]]) / centers.shape[1]
+                # img = superimpose(img, centers[0])
 
                 img2 = cv2.resize(img, (size * 2, size * 2), interpolation=cv2.INTER_LINEAR)
                 # str = "acc: %.2f, th: %.2f " % (pck_acc["total_correct"] / pck_acc["total_keypoints"], th_val)
