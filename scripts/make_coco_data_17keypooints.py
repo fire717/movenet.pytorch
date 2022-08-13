@@ -261,19 +261,19 @@ if __name__ == '__main__':
     EXPAND_RATIO = 1. 
     #person body bbox expand range to image edge
 
-    output_img_dir = "./data/croped/imgs"
+    output_img_dir = "./data/cropped/imgs"
 
 
     img_dir = "./data/val2017"
     labels_path = "./data/annotations/person_keypoints_val2017.json"
-    output_name = './data/croped/val2017.json'
+    output_name = './data/cropped/val2017.json'
     main(img_dir, labels_path, output_name, output_img_dir)
 
     
 
     img_dir = "./data/train2017"
     labels_path = "./data/annotations/person_keypoints_train2017.json"
-    output_name = './data/croped/train2017.json'
+    output_name = './data/cropped/train2017.json'
     main(img_dir, labels_path, output_name, output_img_dir)
 
 

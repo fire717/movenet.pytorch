@@ -75,6 +75,21 @@ def upsample(inp, oup, scale=2):
                 nn.Upsample(scale_factor=scale, mode='bilinear', align_corners=False))
 
 
+def IRBlock(oup, hidden_dim):
+    return nn.Sequential(
+            # pw
+            nn.Conv2d(oup, hidden_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            nn.ReLU(inplace=False),
+            # dw
+            nn.Conv2d(hidden_dim, hidden_dim, 3, 1, 1, groups=hidden_dim, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            nn.ReLU(inplace=False),
+            # pw-linear
+            nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(oup),
+        )
+
 class InvertedResidual(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio, n):
         super(InvertedResidual, self).__init__()
@@ -98,25 +113,15 @@ class InvertedResidual(nn.Module):
             nn.BatchNorm2d(oup),
         )
 
-        self.conv2 = nn.Sequential(
-            # pw
-            nn.Conv2d(oup, hidden_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(hidden_dim),
-            nn.ReLU(inplace=False),
-            # dw
-            nn.Conv2d(hidden_dim, hidden_dim, 3, 1, 1, groups=hidden_dim, bias=False),
-            nn.BatchNorm2d(hidden_dim),
-            nn.ReLU(inplace=False),
-            # pw-linear
-            nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(oup),
-        )
+        self.conv2 = torch.nn.ModuleList()
+        for i in range(n):
+            self.conv2.append(IRBlock(oup, hidden_dim))
 
     def forward(self, x):
         x = self.conv1(x)
 
-        for _ in range(self.n):
-            x = x + self.conv2(x)
+        for i in range(self.n):
+            x = x + self.conv2[i](x)
 
         return x
 

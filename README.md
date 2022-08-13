@@ -61,7 +61,7 @@ run_task.modelLoad("output/xxx.pth")
 ```
 
 
-6.run predict to show predict result, or run evaluate.py to compute my acc on test dataset.
+6.Run predict.py to show predict result, or run evaluate.py to compute my acc on test dataset.
 ```
 python predict.py
 ```
@@ -102,4 +102,4 @@ I just wanna you know the importance of the data. The more time you spend on cle
 3. [TFHub：movenet/singlepose/lightning
 ](https://tfhub.dev/google/movenet/singlepose/lightning/4
 )
-4. [My article share: 2021轻量级人体姿态估计模型修炼之路（附谷歌MoveNet复现经验）](https://zhuanlan.zhihu.com/p/413313925)
+4. [My article shared: 2021轻量级人体姿态估计模型修炼之路（附谷歌MoveNet复现经验）](https://zhuanlan.zhihu.com/p/413313925)

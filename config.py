@@ -18,9 +18,9 @@ cfg = {
     
 
     ##### Train Setting
-    'img_path':"./data/croped/imgs",
-    'train_label_path':'./data/croped/train2017.json',
-    'val_label_path':'./data/croped/val2017.json',
+    'img_path':"./data/cropped/imgs",
+    'train_label_path':'./data/cropped/train2017.json',
+    'val_label_path':'./data/cropped/val2017.json',
     'balance_data':False,
 
     'log_interval':10,  
@@ -44,7 +44,7 @@ cfg = {
 
 
     ##### Test
-    'test_img_path':"./data/croped/imgs",
+    'test_img_path':"./data/cropped/imgs",
 
     #"../data/eval/imgs",
     #"../data/eval/imgs",

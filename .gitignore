@@ -9,7 +9,7 @@ __pycache__
 /data/annotations
 /data/train2017
 /data/val2017
-/data/croped
+/data/cropped
 /output/show_imgs
 /output/detect
 
