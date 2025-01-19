@@ -1,6 +1,7 @@
 # Movenet.Pytorch
 
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/fire717/Fire/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/fire717/Fire/blob/main/LICENSE) 
+[<img src="https://api.gitsponsors.com/api/badge/img?id=427628530" height="20">](https://api.gitsponsors.com/api/badge/link?p=HeCyGtUISTe847rQEaXcbmaTyeHN3+pnUGkY4niZVu03Ah3I6Rlj7ebRDUY0zd85qJ5niiHtJO/TobJJsvQJzphuWfJG8L0C+Za3PA1Vi7JZLbRR+FuWvpsch29KwEgA2I4glCDfnWpJ4DiBHiXRuA==)
 
 ## Intro
 ![start](/data/imgs/three_pane_aligned.gif)
@@ -106,4 +107,3 @@ I just wanna you know the importance of the data. The more time you spend on cle
 
 
 
-[<img src="https://api.gitsponsors.com/api/badge/img?id=427628530" height="20">](https://api.gitsponsors.com/api/badge/link?p=HeCyGtUISTe847rQEaXcbmaTyeHN3+pnUGkY4niZVu03Ah3I6Rlj7ebRDUY0zd85qJ5niiHtJO/TobJJsvQJzphuWfJG8L0C+Za3PA1Vi7JZLbRR+FuWvpsch29KwEgA2I4glCDfnWpJ4DiBHiXRuA==)
