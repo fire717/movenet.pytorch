@@ -103,3 +103,7 @@ I just wanna you know the importance of the data. The more time you spend on cle
 ](https://tfhub.dev/google/movenet/singlepose/lightning/4
 )
 4. [My article shared: 2021轻量级人体姿态估计模型修炼之路（附谷歌MoveNet复现经验）](https://zhuanlan.zhihu.com/p/413313925)
+
+
+
+[<img src="https://api.gitsponsors.com/api/badge/img?id=427628530" height="20">](https://api.gitsponsors.com/api/badge/link?p=HeCyGtUISTe847rQEaXcbmaTyeHN3+pnUGkY4niZVu03Ah3I6Rlj7ebRDUY0zd85qJ5niiHtJO/TobJJsvQJzphuWfJG8L0C+Za3PA1Vi7JZLbRR+FuWvpsch29KwEgA2I4glCDfnWpJ4DiBHiXRuA==)
